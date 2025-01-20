@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Card, Title } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
+import TransactionsScreen from './TransactionsScreen'; // Asegúrate de que la ruta sea correcta
+import DynamicFormScreen from './DynamicFormScreen';
 
 const FormScreen = () => {
   const [type, setType] = useState('');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState<Date | undefined>(); 
+  const [date, setDate] = useState<Date | undefined>();
   const [description, setDescription] = useState('');
   const [open, setOpen] = useState(false);
+  const [showTransaction, setShowTransaction] = useState(false); 
+  const [showDynamic, setShowDynamic] = useState(false)
 
   const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
 
@@ -16,7 +20,7 @@ const FormScreen = () => {
     const transactionData = {
       type,
       amount: parseFloat(amount),
-      date: date ? date.toISOString().split('T')[0] : null, // Validar que no sea undefined
+      date: date ? date.toISOString().split('T')[0] : null,
       description,
     };
 
@@ -51,6 +55,15 @@ const FormScreen = () => {
     setDate(params.date);
   };
 
+  // Si `showTransaction` es true, muestra el formulario TransactionsScreen
+  if (showTransaction) {
+    return <TransactionsScreen />;
+  }
+
+  if (showDynamic) {
+    return <DynamicFormScreen/>;
+  }
+
   return (
     <View style={styles.container}>
       <Card style={styles.card}>
@@ -84,7 +97,7 @@ const FormScreen = () => {
             visible={open}
             onDismiss={() => setOpen(false)}
             date={date || new Date()}
-            onConfirm={onConfirm} // Llamada con el tipo esperado
+            onConfirm={onConfirm}
             locale="es"
           />
           <TextInput
@@ -94,12 +107,22 @@ const FormScreen = () => {
             mode="outlined"
             style={styles.input}
           />
+          <Button mode="contained" onPress={handleSubmit} style={styles.button}>
+            Enviar
+          </Button>
           <Button
-            mode="contained"
-            onPress={handleSubmit}
+            mode="outlined"
+            onPress={() => setShowTransaction(true)} // Cambié a vista de TransactionsScreen
             style={styles.button}
           >
-            Enviar
+            Ver Transaction
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={() => setShowDynamic(true)} 
+            style={styles.button}
+          >
+            Dynamic Form
           </Button>
         </Card.Content>
       </Card>
