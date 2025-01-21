@@ -93,7 +93,7 @@ export default function AdminScreen() {
               <DataTable.Header>
                 <DataTable.Title>Fecha</DataTable.Title>
                 <DataTable.Title>Tipo</DataTable.Title>
-                <DataTable.Title numeric>Monto</DataTable.Title>
+                <DataTable.Title>Monto</DataTable.Title>
                 <DataTable.Title>Descripción</DataTable.Title>
               </DataTable.Header>
 
@@ -101,7 +101,7 @@ export default function AdminScreen() {
                 <DataTable.Row key={transaction.id}>
                   <DataTable.Cell>{formatDate(transaction.date)}</DataTable.Cell>
                   <DataTable.Cell>{transaction.type}</DataTable.Cell>
-                  <DataTable.Cell numeric>{formatAmount(transaction.amount)}</DataTable.Cell>
+                  <DataTable.Cell>{formatAmount(transaction.amount)}</DataTable.Cell>
                   <DataTable.Cell>{transaction.description}</DataTable.Cell>
                 </DataTable.Row>
               ))}
