@@ -113,6 +113,14 @@ const AdminScreen = () => {
       {item.type === 'SUPPLIER' && item.supplier && (
         <ThemedText style={styles.cardText}>Proveedor: {item.supplier}</ThemedText>
       )}
+
+      {item.type === 'SALARY' && (
+        <>
+          {item.username && (
+            <ThemedText style={styles.cardText}>Empleado: {item.username}</ThemedText>
+          )}
+        </>
+      )}
     </View>
   );
 
