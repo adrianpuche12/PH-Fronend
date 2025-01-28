@@ -1,38 +1,67 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Text, ScrollView } from 'react-native';
-import { TextInput, Button, RadioButton, Card, Title } from 'react-native-paper';
+import { View, StyleSheet, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { TextInput, Button, RadioButton, Card, Title, Snackbar } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
 import FormScreen from './FormScreen';
-import { blue } from 'react-native-reanimated/lib/typescript/Colors';
+
 
 
 const BACKEND_URL = 'http://192.168.56.1:8080/api/forms';
 
 const DynamicFormScreen = () => {
-  const [formType, setFormType] = useState<'closing-deposits' | 'supplier-payments' | 'salary-payments' | ''>('');  
+  const [formType, setFormType] = useState<'closing-deposits' | 'supplier-payments' | 'salary-payments' | ''>('');
   const [formData, setFormData] = useState<any>({
     closingsCount: '',
     amount: '',
     periodStart: '',
     periodEnd: '',
     username: '',
-    supplier: '',  
+    supplier: '',
     description: '',
   });
   const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [selectedDateField, setSelectedDateField] = useState<'periodStart' | 'periodEnd' | ''>('');  
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [isFormValid, setIsFormValid] = useState(false); // Nuevo estado para validar el formulario
-  const [showFormScreen, setShowFormScreen] = useState(false)
+  const [selectedDateField, setSelectedDateField] = useState<'periodStart' | 'periodEnd' | ''>('');
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarType, setSnackbarType] = useState<'success' | 'error'>('success');
+  const [showFormScreen, setShowFormScreen] = useState(false);
+  const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
 
+  // Función para mostrar mensajes
+  const showMessage = (type: 'success' | 'error', text: string) => {
+    setSnackbarMessage(text);
+    setSnackbarType(type);
+    setSnackbarVisible(true);
+  };
+
+  // Efecto para ocultar el mensaje después de 3 segundos
+  useEffect(() => {
+    if (snackbarVisible) {
+      const timer = setTimeout(() => {
+        setSnackbarVisible(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [snackbarVisible]);
+
+  // Función para manejar cambios en los campos de entrada
   const handleInputChange = (field: string, value: string) => {
+    if (field === 'amount') {
+      const amountRegex = /^[0-9]*[.,]?[0-9]{0,2}$/;
+      if (!amountRegex.test(value)) {
+        showMessage('error', 'El monto debe ser un número válido (ej. 100.50).');
+        return;
+      }
+    }
     setFormData((prevData: any) => ({
       ...prevData,
       [field]: value,
     }));
+    setErrors((prevErrors) => ({ ...prevErrors, [field]: false }));
   };
 
+  // Función para manejar la confirmación de fecha
   const handleDateConfirm = (params: { date: Date | undefined }) => {
     if (params.date) {
       const formattedDate = format(params.date, 'yyyy-MM-dd');
@@ -40,21 +69,58 @@ const DynamicFormScreen = () => {
         ...prevData,
         [selectedDateField]: formattedDate,
       }));
+      setErrors((prevErrors) => ({ ...prevErrors, [selectedDateField]: false }));
     }
     setDatePickerVisible(false);
-    setSelectedDateField(''); // Reset selected date field after choosing
+    setSelectedDateField('');
   };
 
+  // Función para validar el formulario
+  const validateForm = () => {
+    const newErrors: { [key: string]: boolean } = {};
+    if (formType === 'closing-deposits') {
+      if (!formData.amount) newErrors.amount = true;
+      if (!formData.username) newErrors.username = true;
+      if (!formData.periodStart) newErrors.periodStart = true;
+      if (!formData.periodEnd) newErrors.periodEnd = true;
+    } else if (formType === 'supplier-payments') {
+      if (!formData.amount) newErrors.amount = true;
+      if (!formData.username) newErrors.username = true;
+      if (!formData.supplier) newErrors.supplier = true;
+    } else if (formType === 'salary-payments') {
+      if (!formData.amount) newErrors.amount = true;
+      if (!formData.username) newErrors.username = true;
+      if (!formData.description) newErrors.description = true;
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Función para enviar el formulario
   const handleSubmit = async () => {
     if (!formType) {
-      setMessage({ type: 'error', text: 'Por favor, seleccione un formulario.' });
+      showMessage('error', 'Por favor, seleccione un formulario.');
+      return;
+    }
+
+    const isValid = validateForm();
+    if (!isValid) {
+      showMessage('error', 'Todos los campos son obligatorios.');
+      return;
+    }
+
+    const amountRegex = /^[0-9]+([.,][0-9]{1,2})?$/;
+    if (!amountRegex.test(formData.amount)) {
+      showMessage('error', 'El monto debe ser un número válido (ej. 100.50).');
       return;
     }
 
     try {
       let url = `${BACKEND_URL}/${formType}`;
-
-      let formToSend = { ...formData };
+      const formToSend = {
+        ...formData,
+        amount: parseFloat(formData.amount.replace(',', '.')),
+      };
 
       const response = await fetch(url, {
         method: 'POST',
@@ -63,7 +129,7 @@ const DynamicFormScreen = () => {
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Datos enviados correctamente' });
+        showMessage('success', 'Datos enviados correctamente');
         setFormData({
           closingsCount: '',
           amount: '',
@@ -73,41 +139,24 @@ const DynamicFormScreen = () => {
           supplier: '',
           description: '',
         });
-        setFormType(''); // Reseteamos el tipo de formulario
+        setFormType('');
+        setErrors({});
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.message || 'Error al enviar el formulario' });
+        showMessage('error', error.message || 'Error al enviar el formulario');
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'No se pudo conectar con el servidor' });
+      showMessage('error', 'No se pudo conectar con el servidor');
     }
   };
-
-  const validateForm = () => {
-    // Validar los campos obligatorios según el tipo de formulario
-    let isValid = true;
-    if (formType === 'closing-deposits') {
-      isValid = formData.amount && formData.username && formData.periodStart && formData.periodEnd;
-    } else if (formType === 'supplier-payments') {
-      isValid = formData.amount && formData.username && formData.supplier;
-    } else if (formType === 'salary-payments') {
-      isValid = formData.amount && formData.username && formData.description;
-    }
-    setIsFormValid(isValid); // Actualizar el estado de validez
-  };
-
-  // Use effect to validate form when formType or formData changes
-  useEffect(() => {
-    validateForm();
-  }, [formType, formData]);
 
   if (showFormScreen) {
     return <FormScreen />;
   }
-  
 
+  // Renderizar la lista de proveedores
   const renderSupplierList = () => {
-    const suppliers = ['Pollo Rey', 'Pollo Cortijo', 'Pollo Bravo']; // Lista de proveedores
+    const suppliers = ['Pollo Rey', 'Pollo Cortijo', 'Pollo Bravo'];
     return (
       <View>
         {suppliers.map((supplier) => (
@@ -116,13 +165,14 @@ const DynamicFormScreen = () => {
             label={supplier}
             value={supplier}
             status={formData.supplier === supplier ? 'checked' : 'unchecked'}
-            onPress={() => handleInputChange('supplier', supplier)} // Guardamos el proveedor seleccionado
+            onPress={() => handleInputChange('supplier', supplier)}
           />
         ))}
       </View>
     );
   };
 
+  // Renderizar los campos del formulario según el tipo
   const renderFormFields = () => {
     switch (formType) {
       case 'closing-deposits':
@@ -140,7 +190,7 @@ const DynamicFormScreen = () => {
               label="Monto"
               value={formData.amount}
               onChangeText={(value) => handleInputChange('amount', value)}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               mode="outlined"
               style={styles.input}
             />
@@ -182,7 +232,7 @@ const DynamicFormScreen = () => {
               label="Monto"
               value={formData.amount}
               onChangeText={(value) => handleInputChange('amount', value)}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               mode="outlined"
               style={styles.input}
             />
@@ -209,7 +259,7 @@ const DynamicFormScreen = () => {
               label="Monto"
               value={formData.amount}
               onChangeText={(value) => handleInputChange('amount', value)}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
               mode="outlined"
               style={styles.input}
             />
@@ -228,109 +278,97 @@ const DynamicFormScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.card}>
-        <Card.Content>
-        <Button
-            mode="text"            
-            onPress={() => setShowFormScreen(true)}
-            style={styles.goBackButton}  // Aplicando el estilo personalizado
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView>
+        <Card style={styles.card}>
+          <Card.Content>
+            <Button
+              mode="text"
+              onPress={() => setShowFormScreen(true)}
+              style={styles.goBackButton}
             >
-            Go back
-        </Button>
+              Go back
+            </Button>
 
-            <Title style={[styles.title, { fontWeight: 'bold' }]} >
-                Formularios Dinámicos
+            <Title style={[styles.title, { fontWeight: 'bold' }]}>
+              Formularios Dinámicos
             </Title>
-          <Title style={styles.title}>Seleccione un formulario</Title>
-          <RadioButton.Group
-            onValueChange={(value) =>
-              setFormType(value as 'closing-deposits' | 'supplier-payments' | 'salary-payments' | '')
-            }
-            value={formType}
-          >
-            <RadioButton.Item label="Depósito de Cierres" value="closing-deposits" />
-            <RadioButton.Item label="Pago a Proveedores" value="supplier-payments" />
-            <RadioButton.Item label="Salarios" value="salary-payments" />
-          </RadioButton.Group>
+            <Title style={styles.title}>Seleccione un formulario</Title>
+            <RadioButton.Group
+              onValueChange={(value) =>
+                setFormType(value as 'closing-deposits' | 'supplier-payments' | 'salary-payments' | '')
+              }
+              value={formType}
+            >
+              <RadioButton.Item label="Depósito de Cierres" value="closing-deposits" />
+              <RadioButton.Item label="Pago a Proveedores" value="supplier-payments" />
+              <RadioButton.Item label="Salarios" value="salary-payments" />
+            </RadioButton.Group>
 
-          {renderFormFields()}
-          <Button
-            mode="contained"
-            onPress={handleSubmit}
-            style={styles.button}
-            disabled={!isFormValid} // Deshabilitar el botón si el formulario no es válido
-          >
-            Enviar
-          </Button>
+            {renderFormFields()}
+            <Button
+              mode="contained"
+              onPress={handleSubmit}
+              style={styles.button}
+            >
+              Enviar
+            </Button>
+          </Card.Content>
+        </Card>
+        <DatePickerModal
+          mode="single"
+          visible={datePickerVisible}
+          onDismiss={() => setDatePickerVisible(false)}
+          onConfirm={handleDateConfirm}
+          locale="es"
+        />
+      </ScrollView>
 
-          {/* Mostrar mensaje en una Card */}
-          {message && (
-            <Card style={[styles.messageCard, message.type === 'success' ? styles.successCard : styles.errorCard]}>
-              <Card.Content>
-                <Text style={styles.messageText}>{message.text}</Text>
-              </Card.Content>
-            </Card>
-          )}
-        </Card.Content>
-      </Card>
-      <DatePickerModal
-        mode="single"
-        visible={datePickerVisible}
-        onDismiss={() => setDatePickerVisible(false)}
-        onConfirm={handleDateConfirm}
-        locale="es"
-      />
-    </ScrollView>
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={{ backgroundColor: snackbarType === 'success' ? '#4caf50' : '#f44336' }}
+      >
+        {snackbarMessage}
+      </Snackbar>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 16,
-        backgroundColor: '#f5f5f5',
-    marginBottom: 20,
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f5f5f5',
   },
   goBackButton: {
-    position: 'absolute',  // Fijar el botón en una posición absoluta
-    top: 10,  // Distancia desde la parte superior
-    color: "#007AFF", // Color azul
-    left: 10,  // Distancia desde la parte izquierda
-    zIndex: 1,  // Asegurar que el botón esté encima de otros elementos si es necesario
+    position: 'absolute',
+    top: 10,
+    color: "#007AFF",
+    left: 10,
+    zIndex: 1,
   },
   title: {
     fontSize: 24,
     color: '#333',
-    textAlign: 'center', // Asegura que el texto esté centrado
-    flex: 1,  // Asegura que el título ocupe el espacio disponible
+    textAlign: 'center',
+    flex: 1,
   },
   card: {
     padding: 16,
     borderRadius: 8,
     elevation: 4,
     backgroundColor: 'white',
-  },  
+  },
   input: {
     marginBottom: 16,
   },
   button: {
     marginTop: 16,
-  },
-  messageCard: {
-    marginTop: 16,
-    borderRadius: 8,
-    padding: 10,
-  },
-  successCard: {
-    backgroundColor: '#e1f5e1', // Verde claro
-  },
-  errorCard: {
-    backgroundColor: '#ffcccc', // Rojo claro
-  },
-  messageText: {
-    textAlign: 'center',
-    fontSize: 16,
   },
 });
 

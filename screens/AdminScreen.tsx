@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Dimensions, useWindowDimensions, TouchableOpacity } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Button, TextInput, IconButton } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
+import { useFocusEffect } from '@react-navigation/native'; 
+
 
 interface Transaction {
   id: number;
@@ -29,9 +31,11 @@ const AdminScreen = () => {
   const [selectedDateInput, setSelectedDateInput] = useState<'start' | 'end'>('start');
   const [currentPage, setCurrentPage] = useState(0);
 
+  const { width: screenWidth } = useWindowDimensions(); // Obtener el ancho de la pantalla
+
   const fetchData = async (start?: Date, end?: Date) => {
     try {
-      let url = 'http://192.168.0.2:8080/api/operations/all';
+      let url = 'http://192.168.56.1:8080/api/operations/all';
       if (start && end) {
         const startStr = start.toISOString().split('T')[0];
         const endStr = end.toISOString().split('T')[0];
@@ -48,9 +52,12 @@ const AdminScreen = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData(startDate, endDate);
-  }, [startDate, endDate]);
+  // Usa useFocusEffect para recargar los datos cada vez que la pantalla recibe el foco
+  useFocusEffect(
+    useCallback(() => {
+      fetchData(startDate, endDate);
+    }, [startDate, endDate])
+  );
 
   const onDismissDatePicker = () => {
     setDatePickerOpen(false);
@@ -80,6 +87,27 @@ const AdminScreen = () => {
     currentPage * ITEMS_PER_PAGE,
     (currentPage + 1) * ITEMS_PER_PAGE
   );
+
+  // Calcular el rango de páginas para mostrar en el selector
+  const maxPagesToShow = screenWidth < 768 ? 5 : screenWidth < 1024 ? 10 : 20; // Máximo de páginas a mostrar en el selector
+
+  let startPage = Math.max(0, currentPage - Math.floor(maxPagesToShow / 2));
+  let endPage = Math.min(totalPages - 1, startPage + maxPagesToShow - 1);
+
+  // Ajustar startPage si el rango es menor que maxPagesToShow
+  if (endPage - startPage + 1 < maxPagesToShow) {
+    startPage = Math.max(0, endPage - maxPagesToShow + 1);
+  }
+
+  // Crear el array de números de página
+  const pageNumbers: number[] = []; // Corrección: Definir explícitamente el tipo como number[]
+  if (totalPages > 0) { // Solo calcular si hay páginas
+    for (let i = startPage; i <= endPage; i++) {
+      if (i >= 0 && i < totalPages) { // Asegurarse de que el índice esté dentro del rango
+        pageNumbers.push(i);
+      }
+    }
+  }
 
   const renderTransaction = (item: Transaction, index: number) => (
     <View key={`transaction-${item.id}-${index}`} style={styles.card}>
@@ -132,9 +160,20 @@ const AdminScreen = () => {
         onPress={() => setCurrentPage(p => Math.max(0, p - 1))}
         disabled={currentPage === 0}
       />
-      <ThemedText style={styles.paginationText}>
-        {`${currentPage + 1} de ${totalPages}`}
-      </ThemedText>
+      {pageNumbers.map((page) => (
+        <TouchableOpacity
+          key={page}
+          style={[
+            styles.pageButton,
+            currentPage === page && styles.activePageButton,
+          ]}
+          onPress={() => setCurrentPage(page)}
+        >
+          <ThemedText style={currentPage === page ? styles.activePageText : styles.pageText}>
+            {page + 1}
+          </ThemedText>
+        </TouchableOpacity>
+      ))}
       <IconButton
         icon="chevron-right"
         mode="contained"
@@ -189,10 +228,14 @@ const AdminScreen = () => {
         ) : (
           <>
             {paginatedTransactions.map((item, index) => renderTransaction(item, index))}
-            {renderPagination()}
           </>
         )}
       </ScrollView>
+
+      {/* Paginación fija en la parte inferior */}
+      <View style={styles.fixedPaginationContainer}>
+        {renderPagination()}
+      </View>
 
       <DatePickerModal
         locale="es"
@@ -229,6 +272,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    marginBottom: 60, // Espacio para la paginación fija
   },
   card: {
     padding: 16,
@@ -254,12 +298,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 1,
   },
-  paginationText: {
-    marginHorizontal: 16,
+  fixedPaginationContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    paddingVertical: 8,
+  },
+  pageButton: {
+    marginHorizontal: 4,
+    padding: 8,
+    borderRadius: 4,
+    backgroundColor: '#f0f0f0',
+  },
+  activePageButton: {
+    backgroundColor: '#007bff',
+  },
+  pageText: {
     fontSize: 16,
-  }
+    color: '#333',
+  },
+  activePageText: {
+    fontSize: 16,
+    color: '#fff',
+  },
 });
 
 export default AdminScreen;
