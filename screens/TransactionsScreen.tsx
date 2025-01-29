@@ -10,11 +10,10 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import FormScreen from './FormScreen';
-
-
 
 const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -24,6 +23,8 @@ const TransactionsScreen = () => {
   const [showNoChangesModal, setShowNoChangesModal] = useState(false);
   const [modifiedField, setModifiedField] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1); // Página actual
+  const [isLoading, setIsLoading] = useState(true); // Estado para controlar la carga
+
   const itemsPerPage = 5; // Número de tarjetas por página
 
   const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
@@ -45,6 +46,7 @@ const TransactionsScreen = () => {
   useEffect(() => {
     // Función para obtener las transacciones
     const fetchTransactions = async () => {
+      setIsLoading(true); // Activar el estado de carga
       try {
         const response = await fetch(BACKEND_URL);
         if (response.ok) {
@@ -55,6 +57,8 @@ const TransactionsScreen = () => {
         }
       } catch (error) {
         console.error('Error al obtener las transacciones', error);
+      } finally {
+        setIsLoading(false); // Desactivar el estado de carga
       }
     };
 
@@ -173,195 +177,189 @@ const TransactionsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => setShowFormScreen(true)}
-          style={{
-            backgroundColor: 'white',
-            width: 100,
-            borderColor: '#7C4DFF',
-            borderWidth: 1,
-            padding: 10,
-            borderRadius: 5,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: '#7C4DFF' }}>Go back</Text>
-        </TouchableOpacity>
+      <View style={styles.header}>        
         <Text style={styles.title}>Transacciones</Text>
       </View>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Cargando datos desde la base de datos...</Text>
+        </View>
+      ) : (
+        <>
+          <FlatList
+            data={currentTransactions}
+            renderItem={({ item }) => (
+              <View style={styles.transactionCard}>
+                {editingTransaction && editingTransaction.id === item.id ? (
+                  <View>
+                    <Picker
+                      selectedValue={editingTransaction.type}
+                      onValueChange={(itemValue) => handleChange('type', itemValue)}
+                      style={styles.input}
+                    >
+                      <Picker.Item label="Income" value="income" />
+                      <Picker.Item label="Expense" value="expense" />
+                    </Picker>
 
-      <FlatList
-        data={currentTransactions}
-        renderItem={({ item }) => (
-          <View style={styles.transactionCard}>
-            {editingTransaction && editingTransaction.id === item.id ? (
-              <View>
-                <Picker
-                  selectedValue={editingTransaction.type}
-                  onValueChange={(itemValue) => handleChange('type', itemValue)}
-                  style={styles.input}
-                >
-                  <Picker.Item label="Income" value="income" />
-                  <Picker.Item label="Expense" value="expense" />
-                </Picker>
-
-                <TextInput
-                  style={styles.input}
-                  value={editingTransaction.amount.toString()}
-                  onChangeText={(text) => handleChange('amount', text)}
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  style={styles.input}
-                  value={editingTransaction.date}
-                  onChangeText={(text) => handleChange('date', text)}
-                />
-                <TextInput
-                  style={styles.input}
-                  value={editingTransaction.description}
-                  onChangeText={(text) => handleChange('description', text)}
-                />
-                <TouchableOpacity
-                  onPress={handleSaveClick}
-                  style={{
-                    backgroundColor: '#28a745',
-                    padding: 10,
-                    borderRadius: 5,
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={{ color: 'white' }}>Guardar</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View>
-                <Text style={styles.transactionText}>
-                  <Text style={styles.boldText}>Tipo:</Text> {item.type}
-                </Text>
-                <Text style={styles.transactionText}>
-                  <Text style={styles.boldText}>Monto:</Text> ${item.amount}
-                </Text>
-                <Text style={styles.transactionText}>
-                  <Text style={styles.boldText}>Fecha:</Text> {item.date}
-                </Text>
-                <Text style={styles.transactionText}>
-                  <Text style={styles.boldText}>Descripción:</Text> {item.description}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => startEditing(item)}
-                  style={{
-                    backgroundColor: '#ffc107',
-                    padding: 10,
-                    borderRadius: 5,
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={{ color: 'white' }}>Editar</Text>
-                </TouchableOpacity>
+                    <TextInput
+                      style={styles.input}
+                      value={editingTransaction.amount.toString()}
+                      onChangeText={(text) => handleChange('amount', text)}
+                      keyboardType="numeric"
+                    />
+                    <TextInput
+                      style={styles.input}
+                      value={editingTransaction.date}
+                      onChangeText={(text) => handleChange('date', text)}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      value={editingTransaction.description}
+                      onChangeText={(text) => handleChange('description', text)}
+                    />
+                    <TouchableOpacity
+                      onPress={handleSaveClick}
+                      style={{
+                        backgroundColor: '#28a745',
+                        padding: 10,
+                        borderRadius: 5,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ color: 'white' }}>Guardar</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View>
+                    <Text style={styles.transactionText}>
+                      <Text style={styles.boldText}>Tipo:</Text> {item.type}
+                    </Text>
+                    <Text style={styles.transactionText}>
+                      <Text style={styles.boldText}>Monto:</Text> ${item.amount}
+                    </Text>
+                    <Text style={styles.transactionText}>
+                      <Text style={styles.boldText}>Fecha:</Text> {item.date}
+                    </Text>
+                    <Text style={styles.transactionText}>
+                      <Text style={styles.boldText}>Descripción:</Text> {item.description}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => startEditing(item)}
+                      style={{
+                        backgroundColor: '#ffc107',
+                        padding: 10,
+                        borderRadius: 5,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ color: 'white' }}>Editar</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
-          </View>
-        )}
-        keyExtractor={(item) => item.id.toString()}
-      />
+            keyExtractor={(item) => item.id.toString()}
+          />
 
-      {/* Controles de paginación */}
-      <View style={styles.paginationContainer}>
-        <TouchableOpacity
-          onPress={goToPreviousPage}
-          disabled={currentPage === 1}
-          style={[
-            styles.paginationButton,
-            currentPage === 1 && styles.disabledButton,
-          ]}
-        >
-          <Text style={styles.paginationText}>&lt;</Text>
-        </TouchableOpacity>
-        {pageNumbers.map((page) => (
-          <TouchableOpacity
-            key={page}
-            onPress={() => goToPage(page)}
-            style={[
-              styles.paginationButton,
-              currentPage === page && styles.activeButton,
-            ]}
-          >
-            <Text
+          {/* Controles de paginación */}
+          <View style={styles.paginationContainer}>
+            <TouchableOpacity
+              onPress={goToPreviousPage}
+              disabled={currentPage === 1}
               style={[
-                styles.paginationText,
-                currentPage === page && styles.activeText,
+                styles.paginationButton,
+                currentPage === 1 && styles.disabledButton,
               ]}
             >
-              {page}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          onPress={goToNextPage}
-          disabled={currentPage === totalPages}
-          style={[
-            styles.paginationButton,
-            currentPage === totalPages && styles.disabledButton,
-          ]}
-        >
-          <Text style={styles.paginationText}>&gt;</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Tarjeta de confirmación */}
-      <Modal
-        visible={showConfirmation}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowConfirmation(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.confirmationCard}>
-            <Text style={styles.confirmationText}>
-              ¿Estás seguro de que quieres modificar el campo "{fieldNamesInSpanish[modifiedField!]}"?
-            </Text>
-            <View style={styles.confirmationButtons}>
+              <Text style={styles.paginationText}>&lt;</Text>
+            </TouchableOpacity>
+            {pageNumbers.map((page) => (
               <TouchableOpacity
-                onPress={handleCancel}
-                style={{ backgroundColor: '#ff4444', padding: 10, borderRadius: 5, width: '45%' }}
+                key={page}
+                onPress={() => goToPage(page)}
+                style={[
+                  styles.paginationButton,
+                  currentPage === page && styles.activeButton,
+                ]}
               >
-                <Text style={{ color: 'white', textAlign: 'center' }}>Cancelar</Text>
+                <Text
+                  style={[
+                    styles.paginationText,
+                    currentPage === page && styles.activeText,
+                  ]}
+                >
+                  {page}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={saveTransaction}
-                style={{ backgroundColor: '#28a745', padding: 10, borderRadius: 5, width: '45%' }}
-              >
-                <Text style={{ color: 'white', textAlign: 'center' }}>Modificar</Text>
-              </TouchableOpacity>
-            </View>
+            ))}
+            <TouchableOpacity
+              onPress={goToNextPage}
+              disabled={currentPage === totalPages}
+              style={[
+                styles.paginationButton,
+                currentPage === totalPages && styles.disabledButton,
+              ]}
+            >
+              <Text style={styles.paginationText}>&gt;</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
 
-      {/* Tarjeta de "No se han realizado cambios" */}
-      <Modal
-        visible={showNoChangesModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowNoChangesModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.confirmationCard}>
-            <Text style={styles.confirmationText}>
-              No has modificado ningún campo. Por favor, realiza tu modificación.
-            </Text>
-            <View style={styles.confirmationButtons}>
-              <TouchableOpacity
-                onPress={handleCloseNoChangesModal}
-                style={{ backgroundColor: '#007AFF', padding: 10, borderRadius: 5, width: '50%' }}
-              >
-                <Text style={{ color: 'white', textAlign: 'center' }}>Cerrar</Text>
-              </TouchableOpacity>
+          {/* Tarjeta de confirmación */}
+          <Modal
+            visible={showConfirmation}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowConfirmation(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.confirmationCard}>
+                <Text style={styles.confirmationText}>
+                  ¿Estás seguro de que quieres modificar el campo "{fieldNamesInSpanish[modifiedField!]}"?
+                </Text>
+                <View style={styles.confirmationButtons}>
+                  <TouchableOpacity
+                    onPress={handleCancel}
+                    style={{ backgroundColor: '#ff4444', padding: 10, borderRadius: 5, width: '45%' }}
+                  >
+                    <Text style={{ color: 'white', textAlign: 'center' }}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={saveTransaction}
+                    style={{ backgroundColor: '#28a745', padding: 10, borderRadius: 5, width: '45%' }}
+                  >
+                    <Text style={{ color: 'white', textAlign: 'center' }}>Modificar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
-      </Modal>
+          </Modal>
+
+          {/* Tarjeta de "No se han realizado cambios" */}
+          <Modal
+            visible={showNoChangesModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowNoChangesModal(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.confirmationCard}>
+                <Text style={styles.confirmationText}>
+                  No has modificado ningún campo. Por favor, realiza tu modificación.
+                </Text>
+                <View style={styles.confirmationButtons}>
+                  <TouchableOpacity
+                    onPress={handleCloseNoChangesModal}
+                    style={{ backgroundColor: '#007AFF', padding: 10, borderRadius: 5, width: '50%' }}
+                  >
+                    <Text style={{ color: 'white', textAlign: 'center' }}>Cerrar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        </>
+      )}
     </SafeAreaView>
   );
 };
@@ -462,6 +460,16 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#007AFF',
   },
 });
 

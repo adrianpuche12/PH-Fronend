@@ -284,14 +284,7 @@ const DynamicFormScreen = () => {
     >
       <ScrollView>
         <Card style={styles.card}>
-          <Card.Content>
-            <Button
-              mode="text"
-              onPress={() => setShowFormScreen(true)}
-              style={styles.goBackButton}
-            >
-              Go back
-            </Button>
+          <Card.Content>           
 
             <Title style={[styles.title, { fontWeight: 'bold' }]}>
               Formularios Dinámicos

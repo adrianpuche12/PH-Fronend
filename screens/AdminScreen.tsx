@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions, useWindowDimensions, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Dimensions, useWindowDimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Button, TextInput, IconButton } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { useFocusEffect } from '@react-navigation/native'; 
-
 
 interface Transaction {
   id: number;
@@ -24,16 +23,17 @@ const ITEMS_PER_PAGE = 5;
 
 const AdminScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Estado para controlar la carga
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDateInput, setSelectedDateInput] = useState<'start' | 'end'>('start');
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1); // Cambiado a 1 para coincidir con TransactionScreen
 
   const { width: screenWidth } = useWindowDimensions(); // Obtener el ancho de la pantalla
 
   const fetchData = async (start?: Date, end?: Date) => {
+    setLoading(true); // Activar el estado de carga
     try {
       let url = 'http://192.168.56.1:8080/api/operations/all';
       if (start && end) {
@@ -44,11 +44,11 @@ const AdminScreen = () => {
       const response = await fetch(url);
       const data = await response.json();
       setTransactions(data);
-      setCurrentPage(0); // Reset a la primera página cuando se cargan nuevos datos
+      setCurrentPage(1); // Reset a la primera página cuando se cargan nuevos datos
     } catch (err) {
       console.error('Error al cargar las transacciones:', err);
     } finally {
-      setLoading(false);
+      setLoading(false); // Desactivar el estado de carga
     }
   };
 
@@ -84,30 +84,31 @@ const AdminScreen = () => {
 
   const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
   const paginatedTransactions = transactions.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   // Calcular el rango de páginas para mostrar en el selector
   const maxPagesToShow = screenWidth < 768 ? 5 : screenWidth < 1024 ? 10 : 20; // Máximo de páginas a mostrar en el selector
 
-  let startPage = Math.max(0, currentPage - Math.floor(maxPagesToShow / 2));
-  let endPage = Math.min(totalPages - 1, startPage + maxPagesToShow - 1);
+  let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+  let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
   // Ajustar startPage si el rango es menor que maxPagesToShow
   if (endPage - startPage + 1 < maxPagesToShow) {
-    startPage = Math.max(0, endPage - maxPagesToShow + 1);
+    startPage = Math.max(1, endPage - maxPagesToShow + 1);
   }
 
   // Crear el array de números de página
-  const pageNumbers: number[] = []; // Corrección: Definir explícitamente el tipo como number[]
-  if (totalPages > 0) { // Solo calcular si hay páginas
-    for (let i = startPage; i <= endPage; i++) {
-      if (i >= 0 && i < totalPages) { // Asegurarse de que el índice esté dentro del rango
-        pageNumbers.push(i);
-      }
-    }
+  const pageNumbers: number[] = [];
+  for (let i = startPage; i <= endPage; i++) {
+    pageNumbers.push(i);
   }
+
+  const handleEdit = (transaction: Transaction) => {
+    // Aquí puedes implementar la lógica para editar la transacción
+    console.log('Editar transacción:', transaction);
+  };
 
   const renderTransaction = (item: Transaction, index: number) => (
     <View key={`transaction-${item.id}-${index}`} style={styles.card}>
@@ -149,43 +150,65 @@ const AdminScreen = () => {
           )}
         </>
       )}
+
+      {/* Botón de editar */}
+      {/* <Button 
+        mode="contained" 
+        onPress={() => handleEdit(item)}
+        style={styles.editButton}
+      >
+        Editar
+      </Button>*/}
     </View>
   );
 
   const renderPagination = () => (
     <View style={styles.paginationContainer}>
-      <IconButton
-        icon="chevron-left"
-        mode="contained"
-        onPress={() => setCurrentPage(p => Math.max(0, p - 1))}
-        disabled={currentPage === 0}
-      />
+      <TouchableOpacity
+        onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
+        disabled={currentPage === 1}
+        style={[
+          styles.paginationButton,
+          currentPage === 1 && styles.disabledButton,
+        ]}
+      >
+        <ThemedText style={styles.paginationText}>&lt;</ThemedText>
+      </TouchableOpacity>
       {pageNumbers.map((page) => (
         <TouchableOpacity
           key={page}
-          style={[
-            styles.pageButton,
-            currentPage === page && styles.activePageButton,
-          ]}
           onPress={() => setCurrentPage(page)}
+          style={[
+            styles.paginationButton,
+            currentPage === page && styles.activeButton,
+          ]}
         >
-          <ThemedText style={currentPage === page ? styles.activePageText : styles.pageText}>
-            {page + 1}
+          <ThemedText
+            style={[
+              styles.paginationText,
+              currentPage === page && styles.activeText,
+            ]}
+          >
+            {page}
           </ThemedText>
         </TouchableOpacity>
       ))}
-      <IconButton
-        icon="chevron-right"
-        mode="contained"
-        onPress={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-        disabled={currentPage === totalPages - 1}
-      />
+      <TouchableOpacity
+        onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+        disabled={currentPage === totalPages}
+        style={[
+          styles.paginationButton,
+          currentPage === totalPages && styles.disabledButton,
+        ]}
+      >
+        <ThemedText style={styles.paginationText}>&gt;</ThemedText>
+      </TouchableOpacity>
     </View>
   );
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Panel de Administración</ThemedText>
+      <ThemedText style={styles.title}>Todas las Operaciones</ThemedText>
 
       <View style={styles.filterContainer}>
         <TextInput
@@ -222,15 +245,22 @@ const AdminScreen = () => {
         )}
       </View>
       
-      <ScrollView style={styles.scrollView}>
-        {!loading && paginatedTransactions.length === 0 ? (
-          <ThemedText style={styles.noDataText}>No hay transacciones para mostrar</ThemedText>
-        ) : (
-          <>
-            {paginatedTransactions.map((item, index) => renderTransaction(item, index))}
-          </>
-        )}
-      </ScrollView>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <ThemedText style={styles.loadingText}>Cargando datos desde la base de datos...</ThemedText>
+        </View>
+      ) : (
+        <ScrollView style={styles.scrollView}>
+          {paginatedTransactions.length === 0 ? (
+            <ThemedText style={styles.noDataText}>No hay transacciones para mostrar</ThemedText>
+          ) : (
+            <>
+              {paginatedTransactions.map((item, index) => renderTransaction(item, index))}
+            </>
+          )}
+        </ScrollView>
+      )}
 
       {/* Paginación fija en la parte inferior */}
       <View style={styles.fixedPaginationContainer}>
@@ -310,22 +340,42 @@ const styles = StyleSheet.create({
     borderTopColor: '#ddd',
     paddingVertical: 8,
   },
-  pageButton: {
-    marginHorizontal: 4,
-    padding: 8,
-    borderRadius: 4,
-    backgroundColor: '#f0f0f0',
+  paginationButton: {
+    marginHorizontal: 5,
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
-  activePageButton: {
+  paginationText: {
+    fontSize: 16,
+    color: '#555',
+  },
+  activeButton: {
+    backgroundColor: '#007bff',
+    borderColor: '#007bff',
+  },
+  activeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  editButton: {
+    marginTop: 10,
     backgroundColor: '#007bff',
   },
-  pageText: {
-    fontSize: 16,
-    color: '#333',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  activePageText: {
+  loadingText: {
+    marginTop: 10,
     fontSize: 16,
-    color: '#fff',
+    color: '#007AFF',
   },
 });
 

@@ -7,9 +7,9 @@ import { ThemedView } from '@/components/ThemedView';
 import FormScreen from '@/screens/FormScreen';
 
 export default function HomeScreen() {
-  return (
-    <FormScreen />
-  );
+  //return (
+   // <FormScreen />
+ // );
 }
 
 

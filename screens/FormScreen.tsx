@@ -10,8 +10,6 @@ import {
 import { TextInput, Button, Card, Title } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { Picker } from '@react-native-picker/picker';
-import TransactionsScreen from './TransactionsScreen';
-import DynamicFormScreen from './DynamicFormScreen';
 
 const FormScreen = () => {
   const [type, setType] = useState('income');
@@ -19,8 +17,6 @@ const FormScreen = () => {
   const [date, setDate] = useState<Date | undefined>();
   const [description, setDescription] = useState('');
   const [open, setOpen] = useState(false);
-  const [showTransaction, setShowTransaction] = useState(false);
-  const [showDynamic, setShowDynamic] = useState(false);
   const [showMessageCard, setShowMessageCard] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
@@ -105,21 +101,11 @@ const FormScreen = () => {
     setDate(params.date);
   };
 
-  if (showTransaction) {
-    return <TransactionsScreen />;
-  }
-
-  if (showDynamic) {
-    return <DynamicFormScreen />;
-  }
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      
-
       {/* Contenido desplazable */}
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Card style={styles.card}>
@@ -169,20 +155,6 @@ const FormScreen = () => {
             <Button mode="contained" onPress={handleSubmit} style={styles.button}>
               Enviar
             </Button>
-            <Button
-              mode="outlined"
-              onPress={() => setShowTransaction(true)}
-              style={styles.button}
-            >
-              Ver Transaction
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={() => setShowDynamic(true)}
-              style={styles.button}
-            >
-              Dynamic Form
-            </Button>
           </Card.Content>
         </Card>
       </ScrollView>
@@ -213,18 +185,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  dashboardContainer: {
-    position: 'absolute', // Fija el AdminDashboard en la parte superior
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1, // Asegura que esté por encima del contenido
-  },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 16,
-    marginTop: 80, // Ajusta este valor según la altura de tu AdminDashboard
+    marginTop: 0, // Ajusta este valor para que el formulario comience lo más arriba posible
   },
   card: {
     borderRadius: 8,
