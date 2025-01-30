@@ -24,6 +24,13 @@ const FormScreen = () => {
 
   const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
 
+  const clearData = () => {
+    setType('income');
+    setAmount('');
+    setDate(undefined);
+    setDescription('');
+  };
+
   const showMessage = (message: string, type: 'success' | 'error') => {
     setMessage(message);
     setMessageType(type);
@@ -83,10 +90,7 @@ const FormScreen = () => {
         showMessage('Transacción registrada correctamente.', 'success');
 
         // Limpiar todos los campos después de un envío exitoso
-        setType('income');
-        setAmount('');
-        setDate(undefined);
-        setDescription('');
+        clearData();
       } else {
         const error = await response.json();
         showMessage(error.message || 'Error al registrar la transacción.', 'error');
@@ -154,6 +158,13 @@ const FormScreen = () => {
             />
             <Button mode="contained" onPress={handleSubmit} style={styles.button}>
               Enviar
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={() => clearData()}
+              style={[styles.button,]}
+              >
+              {'↻ Limpiar Formulario'}
             </Button>
           </Card.Content>
         </Card>
