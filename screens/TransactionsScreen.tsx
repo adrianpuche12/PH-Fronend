@@ -319,19 +319,7 @@ const TransactionsScreen = () => {
                       >
                         <Text style={{ color: 'white' }}>Editar</Text>
                       </TouchableOpacity>
-                      {/* <TouchableOpacity
-                        onPress={() => handleDeleteRequest(item)}
-                        style={{
-                          backgroundColor: '#dc3545',
-                          padding: 10,
-                          borderRadius: 5,
-                          alignItems: 'center',
-                          flex: 1,
-                          marginLeft: 5,
-                        }}
-                      >
-                        <Text style={{ color: 'white' }}>Borrar</Text>
-                      </TouchableOpacity> */}
+                      
                     </View>
                   </View>
                 )}
