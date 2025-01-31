@@ -6,6 +6,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Modal,
+  Text,
 } from 'react-native';
 import { TextInput, Button, Card, Title } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
@@ -26,7 +28,31 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   const slideAnim = useState(new Animated.Value(-100))[0]; // Inicia fuera de la pantalla
 
+  const [modalVisible, setModalVisible] = useState(false);
+
   const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
+
+  const handleOpenModal = () => {
+    if (!type || !amount || !date || !description) {
+      showMessage('Todos los campos son obligatorios.', 'error');
+      return;
+    }
+  
+    const amountRegex = /^[0-9]+([.,][0-9]{1,2})?$/;
+    if (!amountRegex.test(amount)) {
+      showMessage('El monto debe ser un número válido (ej. 100.50).', 'error');
+      return;
+    }
+  
+    setModalVisible(true); // Si pasa las validaciones, abre el modal
+  };
+
+  const clearData = () => {
+    setType('income');
+    setAmount('');
+    setDate(undefined);
+    setDescription('');
+  };
 
   const showMessage = (message: string, type: 'success' | 'error') => {
     setMessage(message);
@@ -84,19 +110,19 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
       });
 
       if (response.ok) {
+        setModalVisible(false);
         showMessage('Transacción registrada correctamente.', 'success');
-
+        
         // Limpiar todos los campos después de un envío exitoso
-        setType('income');
-        setAmount('');
-        setDate(undefined);
-        setDescription('');
+        clearData();
         onClose?.();
       } else {
         const error = await response.json();
+        setModalVisible(false);
         showMessage(error.message || 'Error al registrar la transacción.', 'error');
       }
     } catch (error) {
+      setModalVisible(false);
       showMessage('No se pudo conectar con el servidor.', 'error');
     }
   };
@@ -157,12 +183,47 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
               mode="outlined"
               style={styles.input}
             />
-            <Button mode="contained" onPress={handleSubmit} style={styles.button}>
+            <Button mode="contained" onPress={handleOpenModal} style={styles.button}>
               Enviar
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={() => clearData()}
+              style={[styles.button,]}
+              >
+              {'↻ Limpiar Formulario'}
             </Button>
           </Card.Content>
         </Card>
       </ScrollView>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.title}>Informacion a enviar</Text>
+            <View>
+              <Text style={styles.modalText}>Tipo: {type}</Text>
+              <Text style={styles.modalText}>Monto: {amount}</Text>
+              <Text style={styles.modalText}>Fecha: {date ? date.toISOString().split('T')[0] : ''}</Text>
+              <Text style={styles.modalText}>Descripción: {description}</Text>
+            </View>
+            <View style={{ borderTopWidth: 1, borderTopColor: '#ccc', marginTop: 20, paddingTop: 10, width: '100%' }}>
+              <Button style={styles.button} onPress={handleSubmit} mode="contained">
+                Confirmar
+              </Button>
+              <Button style={styles.button} onPress={() => setModalVisible(false)} mode="outlined">
+                Cerrar
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
 
       {/* Tarjeta de mensajes con animación de slide */}
       {showMessageCard && (
@@ -243,6 +304,24 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
   },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '85%',
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalText: {
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  
 });
 
 export default FormScreen;

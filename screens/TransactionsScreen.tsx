@@ -23,23 +23,18 @@ const TransactionsScreen = () => {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showNoChangesModal, setShowNoChangesModal] = useState(false);
   const [modifiedField, setModifiedField] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1); // Página actual
-  const [isLoading, setIsLoading] = useState(true); // Estado para controlar la carga
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<any | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
 
-  const itemsPerPage = 5; // Número de tarjetas por página
-
-  const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
-
-  // Obtener el ancho de la pantalla dinámicamente
+  const itemsPerPage = 5;
+  const BACKEND_URL = 'http://192.168.56.1:8080/transactions'; // Cambia esto si es necesario
   const { width: screenWidth } = useWindowDimensions();
-
-  // Determinar si es un dispositivo móvil o tablet
   const isMobile = screenWidth < 768;
 
-  // Mapeo de nombres de campos en inglés a español
   const fieldNamesInSpanish: { [key: string]: string } = {
     type: 'Tipo',
     amount: 'Monto',
@@ -101,33 +96,33 @@ const TransactionsScreen = () => {
     fetchTransactions();
   }, []); // Array vacío para ejecutar solo al montar
 
-  // Calcular las transacciones de la página actual
+  const filteredTransactions = transactions.filter(transaction => {
+    if (filter === 'all') return true;
+    return transaction.type === filter;
+  });
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentTransactions = transactions.slice(indexOfFirstItem, indexOfLastItem);
+  const currentTransactions = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Cambiar a la página anterior
   const goToPreviousPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
   };
 
-  // Cambiar a la página siguiente
   const goToNextPage = () => {
-    if (currentPage < Math.ceil(transactions.length / itemsPerPage)) {
+    if (currentPage < Math.ceil(filteredTransactions.length / itemsPerPage)) {
       setCurrentPage(currentPage + 1);
     }
   };
 
-  // Cambiar a una página específica
   const goToPage = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
 
-  // Calcular el rango de páginas para mostrar en el selector
-  const totalPages = Math.ceil(transactions.length / itemsPerPage);
-  const maxPagesToShow = screenWidth < 768 ? 5 : screenWidth < 1024 ? 10 : 20; // Máximo de páginas a mostrar en el selector
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const maxPagesToShow = screenWidth < 768 ? 5 : screenWidth < 1024 ? 10 : 20;
 
   let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
   let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
@@ -141,21 +136,23 @@ const TransactionsScreen = () => {
     pageNumbers.push(i);
   }
 
-  // Función para manejar el inicio de la edición
+  const handleFilterChange = (newFilter: 'all' | 'income' | 'expense') => {
+    setFilter(newFilter);
+    setCurrentPage(1);
+  };
+
   const startEditing = (transaction: any) => {
     setEditingTransaction(transaction);
   };
 
-  // Función para manejar la actualización de los campos
   const handleChange = (field: string, value: string) => {
     setEditingTransaction((prevState: any) => ({
       ...prevState,
       [field]: value,
     }));
-    setModifiedField(field); // Actualizar el campo modificado
+    setModifiedField(field);
   };
 
-  // Función para guardar los cambios y enviar los datos al backend
   const saveTransaction = async () => {
     try {
       const response = await fetch(`${BACKEND_URL}/${editingTransaction.id}`, {
@@ -167,7 +164,12 @@ const TransactionsScreen = () => {
       });
   
       if (response.ok) {
-        await fetchTransactions(); // Actualizar la lista después de editar
+        const updatedTransaction = await response.json();
+        setTransactions((prevState: any) =>
+          prevState.map((transaction: any) =>
+            transaction.id === editingTransaction.id ? updatedTransaction : transaction
+          )
+        );
         setEditingTransaction(null);
       } else {
         console.error('Error al actualizar la transacción', response.statusText);
@@ -180,25 +182,70 @@ const TransactionsScreen = () => {
     }
   };
 
-  // Función para mostrar la tarjeta de confirmación
   const handleSaveClick = () => {
     if (!modifiedField) {
-      // Si no se ha modificado ningún campo, mostrar la tarjeta de "No se han realizado cambios"
       setShowNoChangesModal(true);
       return;
     }
     setShowConfirmation(true);
   };
 
-  // Función para cancelar la confirmación
   const handleCancel = () => {
     setShowConfirmation(false);
-    setModifiedField(null); // Reiniciar el campo modificado
+    setModifiedField(null);
   };
 
-  // Función para cerrar la tarjeta de "No se han realizado cambios"
   const handleCloseNoChangesModal = () => {
     setShowNoChangesModal(false);
+  };
+
+  const handleDeleteRequest = (transaction: any) => {
+    console.log('Solicitud de borrado:', transaction); // Depuración
+
+    Alert.alert(
+      'Confirmar Borrado',
+      `¿Estás seguro de que quieres borrar esta transacción?\n\nTipo: ${transaction.type}\nMonto: $${transaction.amount}\nFecha: ${transaction.date}\nDescripción: ${transaction.description}`,
+      [
+        { text: 'Cancelar', style: 'cancel', onPress: () => console.log('Borrado cancelado') },
+        { 
+          text: 'Borrar', 
+          style: 'destructive', 
+          onPress: () => {
+            console.log('Confirmado borrado de la transacción:', transaction.id); // Depuración
+            deleteTransaction(transaction.id);
+          } 
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const deleteTransaction = async (id: number) => {
+    console.log('Iniciando borrado de la transacción con ID:', id); // Depuración
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/${id}`, { 
+        method: 'DELETE',
+      });
+
+      console.log('Respuesta del servidor:', response); // Depuración
+
+      if (!response.ok) {
+        const errorMessage = await response.text(); // Obtener mensaje del backend si lo hay
+        console.error('Error al borrar la transacción:', errorMessage);
+        Alert.alert('Error', `No se pudo borrar la transacción. \nDetalles: ${errorMessage}`);
+        return;
+      }
+
+      // Si la respuesta es exitosa, actualiza el estado de las transacciones
+      setTransactions((prevState: any) => prevState.filter((transaction: any) => transaction.id !== id));
+      Alert.alert('Éxito', 'La transacción ha sido borrada correctamente.');
+    } catch (error) {
+      console.error('Error al borrar la transacción:', error);
+      Alert.alert('Error', 'Ocurrió un error al intentar borrar la transacción.');
+    } finally {
+      setTransactionToDelete(null);
+    }
   };
 
   if (showFormScreen) {
@@ -211,7 +258,7 @@ const TransactionsScreen = () => {
 
 return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>        
+      <View style={styles.header}>
         <Text style={styles.title}>Transacciones</Text>
         <Button 
           mode="contained" 
@@ -228,6 +275,26 @@ return (
         </View>
       ) : (
         <>
+          <View style={styles.filterContainer}>
+            <TouchableOpacity
+              style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
+              onPress={() => handleFilterChange('all')}
+            >
+              <Text style={styles.filterText}>Todos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterButton, filter === 'income' && styles.activeFilter]}
+              onPress={() => handleFilterChange('income')}
+            >
+              <Text style={styles.filterText}>Ingresos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterButton, filter === 'expense' && styles.activeFilter]}
+              onPress={() => handleFilterChange('expense')}
+            >
+              <Text style={styles.filterText}>Egresos</Text>
+            </TouchableOpacity>
+          </View>
           <FlatList
             data={currentTransactions}
             renderItem={({ item }) => (
@@ -288,9 +355,16 @@ return (
                     <View style={styles.buttonContainer}>
                       <TouchableOpacity
                         onPress={() => startEditing(item)}
-                        style={styles.editButton}
+                         style={{
+                          backgroundColor: '#107aff',
+                          padding: 10,
+                          borderRadius: 5,
+                          alignItems: 'center',
+                          flex: 1,
+                          marginRight: 5,
+                        }}
                       >
-                        <Text style={styles.buttonText}>Editar</Text>
+                        <Text style={{ color: 'white' }}>Editar</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDelete(item)}
@@ -306,7 +380,6 @@ return (
             keyExtractor={(item) => item.id.toString()}
           />
 
-          {/* Controles de paginación */}
           <View style={styles.paginationContainer}>
             <TouchableOpacity
               onPress={goToPreviousPage}
@@ -349,7 +422,6 @@ return (
             </TouchableOpacity>
           </View>
 
-          {/* Tarjeta de confirmación */}
           <Modal
             visible={showConfirmation}
             transparent={true}
@@ -379,7 +451,6 @@ return (
             </View>
           </Modal>
 
-          {/* Tarjeta de "No se han realizado cambios" */}
           <Modal
             visible={showNoChangesModal}
             transparent={true}
@@ -493,6 +564,26 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  filterButton: {
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  activeFilter: {
+    backgroundColor: '#007bff',
+    borderColor: '#007bff',
+  },
+  filterText: {
+    fontSize: 16,
+    color: '#555',
+  },
   transactionCard: {
     padding: 16,
     marginBottom: 12,
@@ -521,7 +612,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fondo semitransparente
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   confirmationCard: {
     backgroundColor: 'white',
@@ -547,7 +638,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
     gap: 10,
-    width: '100%', // Asegura que el contenedor ocupe todo el ancho
+    width: '100%',
   },
   paginationButton: {
     marginHorizontal: 5,
@@ -581,6 +672,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#007AFF',
+  },
+  buttonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
   },
 });
 
