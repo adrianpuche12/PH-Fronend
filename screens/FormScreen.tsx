@@ -11,7 +11,11 @@ import { TextInput, Button, Card, Title } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { Picker } from '@react-native-picker/picker';
 
-const FormScreen = () => {
+interface FormScreenProps {
+  onClose?: () => void;
+}
+
+const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
   const [type, setType] = useState('income');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState<Date | undefined>();
@@ -87,6 +91,7 @@ const FormScreen = () => {
         setAmount('');
         setDate(undefined);
         setDescription('');
+        onClose?.();
       } else {
         const error = await response.json();
         showMessage(error.message || 'Error al registrar la transacción.', 'error');

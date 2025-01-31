@@ -8,11 +8,12 @@ import {
   SafeAreaView,
   useWindowDimensions,
   Modal,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { Button, Snackbar } from 'react-native-paper';
 import FormScreen from './FormScreen';
 
 const TransactionsScreen = () => {
@@ -24,6 +25,9 @@ const TransactionsScreen = () => {
   const [modifiedField, setModifiedField] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1); // Página actual
   const [isLoading, setIsLoading] = useState(true); // Estado para controlar la carga
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<any | null>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   const itemsPerPage = 5; // Número de tarjetas por página
 
@@ -43,27 +47,59 @@ const TransactionsScreen = () => {
     description: 'Descripción',
   };
 
-  useEffect(() => {
-    // Función para obtener las transacciones
-    const fetchTransactions = async () => {
-      setIsLoading(true); // Activar el estado de carga
-      try {
-        const response = await fetch(BACKEND_URL);
-        if (response.ok) {
-          const data = await response.json();
-          setTransactions(data);
-        } else {
-          console.error('Error al obtener las transacciones', response.statusText);
-        }
-      } catch (error) {
-        console.error('Error al obtener las transacciones', error);
-      } finally {
-        setIsLoading(false); // Desactivar el estado de carga
-      }
-    };
+  // Función para crear nueva transacción
+  const handleCreateNew = () => {
+    setShowFormScreen(true);
+  };
 
+  // Función para eliminar transacción
+  const handleDelete = async (transaction: any) => {
+    setTransactionToDelete(transaction);
+    setShowDeleteConfirmation(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!transactionToDelete) return;
+  
+    try {
+      const response = await fetch(`${BACKEND_URL}/${transactionToDelete.id}`, {
+        method: 'DELETE',
+      });
+  
+      if (response.ok) {
+        await fetchTransactions(); // Actualizar la lista después de eliminar
+        Alert.alert('Éxito', 'Transacción eliminada correctamente');
+      } else {
+        Alert.alert('Error', 'No se pudo eliminar la transacción');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Error de conexión al intentar eliminar');
+    } finally {
+      setShowDeleteConfirmation(false);
+      setTransactionToDelete(null);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    setIsLoading(true); // Activar el estado de carga
+    try {
+      const response = await fetch(BACKEND_URL);
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data);
+      } else {
+        console.error('Error al obtener las transacciones', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error al obtener las transacciones', error);
+    } finally {
+      setIsLoading(false); // Desactivar el estado de carga
+    }
+  };
+  
+  useEffect(() => {
     fetchTransactions();
-  }, []);
+  }, []); // Array vacío para ejecutar solo al montar
 
   // Calcular las transacciones de la página actual
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -123,30 +159,24 @@ const TransactionsScreen = () => {
   const saveTransaction = async () => {
     try {
       const response = await fetch(`${BACKEND_URL}/${editingTransaction.id}`, {
-        method: 'PUT', // Usando 'PUT' para actualizar la transacción
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(editingTransaction),
       });
-
+  
       if (response.ok) {
-        const updatedTransaction = await response.json();
-        // Actualizar la lista de transacciones con la transacción actualizada
-        setTransactions((prevState: any) =>
-          prevState.map((transaction: any) =>
-            transaction.id === editingTransaction.id ? updatedTransaction : transaction
-          )
-        );
-        setEditingTransaction(null); // Cerrar el formulario de edición
+        await fetchTransactions(); // Actualizar la lista después de editar
+        setEditingTransaction(null);
       } else {
         console.error('Error al actualizar la transacción', response.statusText);
       }
     } catch (error) {
       console.error('Error al actualizar la transacción', error);
     } finally {
-      setShowConfirmation(false); // Ocultar la tarjeta de confirmación después de guardar
-      setModifiedField(null); // Reiniciar el campo modificado
+      setShowConfirmation(false);
+      setModifiedField(null);
     }
   };
 
@@ -172,13 +202,24 @@ const TransactionsScreen = () => {
   };
 
   if (showFormScreen) {
-    return <FormScreen />;
-  }
+  return <FormScreen onClose={() => {
+    setShowFormScreen(false);
+    fetchTransactions();
+    setShowSuccessMessage(true);
+  }} />;
+}
 
-  return (
+return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>        
         <Text style={styles.title}>Transacciones</Text>
+        <Button 
+          mode="contained" 
+          onPress={() => setShowFormScreen(true)}
+          style={styles.createButton}
+        >
+          Crear Nueva Transacción
+        </Button>
       </View>
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -244,17 +285,20 @@ const TransactionsScreen = () => {
                     <Text style={styles.transactionText}>
                       <Text style={styles.boldText}>Descripción:</Text> {item.description}
                     </Text>
-                    <TouchableOpacity
-                      onPress={() => startEditing(item)}
-                      style={{
-                        backgroundColor: '#ffc107',
-                        padding: 10,
-                        borderRadius: 5,
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text style={{ color: 'white' }}>Editar</Text>
-                    </TouchableOpacity>
+                    <View style={styles.buttonContainer}>
+                      <TouchableOpacity
+                        onPress={() => startEditing(item)}
+                        style={styles.editButton}
+                      >
+                        <Text style={styles.buttonText}>Editar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(item)}
+                        style={styles.deleteButton}
+                      >
+                        <Text style={styles.buttonText}>Eliminar</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
               </View>
@@ -358,8 +402,46 @@ const TransactionsScreen = () => {
               </View>
             </View>
           </Modal>
+
+          {/* Modal de confirmación de eliminación */}
+          <Modal
+            visible={showDeleteConfirmation}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowDeleteConfirmation(false)}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.confirmationCard}>
+                <Text style={styles.confirmationText}>
+                  ¿Estás seguro de que quieres eliminar esta transacción?
+                </Text>
+                <View style={styles.confirmationButtons}>
+                  <TouchableOpacity
+                    onPress={() => setShowDeleteConfirmation(false)}
+                    style={{ backgroundColor: '#6c757d', padding: 10, borderRadius: 5, width: '45%' }}
+                  >
+                    <Text style={{ color: 'white', textAlign: 'center' }}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={confirmDelete}
+                    style={{ backgroundColor: '#dc3545', padding: 10, borderRadius: 5, width: '45%' }}
+                  >
+                    <Text style={{ color: 'white', textAlign: 'center' }}>Eliminar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </>
       )}
+      <Snackbar
+        visible={showSuccessMessage}
+        onDismiss={() => setShowSuccessMessage(false)}
+        duration={3000}
+        style={{ backgroundColor: '#4CAF50' }}
+      >
+        Transacción registrada correctamente
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -371,7 +453,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -381,6 +463,35 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
     flex: 1,
+  },
+  createButton: {
+    width: '100%',
+    marginTop: 10,
+    backgroundColor: '#28a745',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 10,
+  },
+  editButton: {
+    backgroundColor: '#ffc107',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    alignItems: 'center',
+  },
+  deleteButton: {
+    backgroundColor: '#dc3545',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
   },
   transactionCard: {
     padding: 16,
