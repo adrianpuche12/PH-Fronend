@@ -4,7 +4,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Button, TextInput, IconButton } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
-import { useFocusEffect } from '@react-navigation/native'; 
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Transaction {
   id: number;
@@ -23,17 +23,17 @@ const ITEMS_PER_PAGE = 5;
 
 const AdminScreen = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true); // Estado para controlar la carga
+  const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDateInput, setSelectedDateInput] = useState<'start' | 'end'>('start');
-  const [currentPage, setCurrentPage] = useState(1); // Cambiado a 1 para coincidir con TransactionScreen
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const { width: screenWidth } = useWindowDimensions(); // Obtener el ancho de la pantalla
+  const { width: screenWidth } = useWindowDimensions();
 
   const fetchData = async (start?: Date, end?: Date) => {
-    setLoading(true); // Activar el estado de carga
+    setLoading(true);
     try {
       let url = 'http://192.168.56.1:8080/api/operations/all';
       if (start && end) {
@@ -44,15 +44,14 @@ const AdminScreen = () => {
       const response = await fetch(url);
       const data = await response.json();
       setTransactions(data);
-      setCurrentPage(1); // Reset a la primera página cuando se cargan nuevos datos
+      setCurrentPage(1);
     } catch (err) {
       console.error('Error al cargar las transacciones:', err);
     } finally {
-      setLoading(false); // Desactivar el estado de carga
+      setLoading(false);
     }
   };
 
-  // Usa useFocusEffect para recargar los datos cada vez que la pantalla recibe el foco
   useFocusEffect(
     useCallback(() => {
       fetchData(startDate, endDate);
@@ -88,25 +87,21 @@ const AdminScreen = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Calcular el rango de páginas para mostrar en el selector
-  const maxPagesToShow = screenWidth < 768 ? 5 : screenWidth < 1024 ? 10 : 20; // Máximo de páginas a mostrar en el selector
+  const maxPagesToShow = screenWidth < 768 ? 5 : screenWidth < 1024 ? 10 : 20;
 
   let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
   let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
-  // Ajustar startPage si el rango es menor que maxPagesToShow
   if (endPage - startPage + 1 < maxPagesToShow) {
     startPage = Math.max(1, endPage - maxPagesToShow + 1);
   }
 
-  // Crear el array de números de página
   const pageNumbers: number[] = [];
   for (let i = startPage; i <= endPage; i++) {
     pageNumbers.push(i);
   }
 
   const handleEdit = (transaction: Transaction) => {
-    // Aquí puedes implementar la lógica para editar la transacción
     console.log('Editar transacción:', transaction);
   };
 
@@ -116,49 +111,17 @@ const AdminScreen = () => {
       <ThemedText style={styles.cardText}>Tipo: {item.type}</ThemedText>
       <ThemedText style={styles.cardText}>Fecha: {formatDate(item.date)}</ThemedText>
       <ThemedText style={styles.cardText}>Monto: ${item.amount}</ThemedText>
-      
-      {item.username && (
-        <ThemedText style={styles.cardText}>Usuario: {item.username}</ThemedText>
-      )}
-      
-      {item.description && (
-        <ThemedText style={styles.cardText}>Descripción: {item.description}</ThemedText>
-      )}
-
+      {item.username && <ThemedText style={styles.cardText}>Usuario: {item.username}</ThemedText>}
+      {item.description && <ThemedText style={styles.cardText}>Descripción: {item.description}</ThemedText>}
       {item.type === 'CLOSING' && (
         <>
-          {item.closingsCount !== undefined && (
-            <ThemedText style={styles.cardText}>Cantidad de cierres: {item.closingsCount}</ThemedText>
-          )}
-          {item.periodStart && (
-            <ThemedText style={styles.cardText}>Periodo desde: {formatDate(item.periodStart)}</ThemedText>
-          )}
-          {item.periodEnd && (
-            <ThemedText style={styles.cardText}>Periodo hasta: {formatDate(item.periodEnd)}</ThemedText>
-          )}
+          {item.closingsCount !== undefined && <ThemedText style={styles.cardText}>Cantidad de cierres: {item.closingsCount}</ThemedText>}
+          {item.periodStart && <ThemedText style={styles.cardText}>Periodo desde: {formatDate(item.periodStart)}</ThemedText>}
+          {item.periodEnd && <ThemedText style={styles.cardText}>Periodo hasta: {formatDate(item.periodEnd)}</ThemedText>}
         </>
       )}
-
-      {item.type === 'SUPPLIER' && item.supplier && (
-        <ThemedText style={styles.cardText}>Proveedor: {item.supplier}</ThemedText>
-      )}
-
-      {item.type === 'SALARY' && (
-        <>
-          {item.username && (
-            <ThemedText style={styles.cardText}>Empleado: {item.username}</ThemedText>
-          )}
-        </>
-      )}
-
-      {/* Botón de editar */}
-      {/* <Button 
-        mode="contained" 
-        onPress={() => handleEdit(item)}
-        style={styles.editButton}
-      >
-        Editar
-      </Button>*/}
+      {item.type === 'SUPPLIER' && item.supplier && <ThemedText style={styles.cardText}>Proveedor: {item.supplier}</ThemedText>}
+      {item.type === 'SALARY' && item.username && <ThemedText style={styles.cardText}>Empleado: {item.username}</ThemedText>}
     </View>
   );
 
@@ -167,10 +130,7 @@ const AdminScreen = () => {
       <TouchableOpacity
         onPress={() => setCurrentPage(p => Math.max(1, p - 1))}
         disabled={currentPage === 1}
-        style={[
-          styles.paginationButton,
-          currentPage === 1 && styles.disabledButton,
-        ]}
+        style={[styles.paginationButton, currentPage === 1 && styles.disabledButton]}
       >
         <ThemedText style={styles.paginationText}>&lt;</ThemedText>
       </TouchableOpacity>
@@ -178,17 +138,9 @@ const AdminScreen = () => {
         <TouchableOpacity
           key={page}
           onPress={() => setCurrentPage(page)}
-          style={[
-            styles.paginationButton,
-            currentPage === page && styles.activeButton,
-          ]}
+          style={[styles.paginationButton, currentPage === page && styles.activeButton]}
         >
-          <ThemedText
-            style={[
-              styles.paginationText,
-              currentPage === page && styles.activeText,
-            ]}
-          >
+          <ThemedText style={[styles.paginationText, currentPage === page && styles.activeText]}>
             {page}
           </ThemedText>
         </TouchableOpacity>
@@ -196,44 +148,56 @@ const AdminScreen = () => {
       <TouchableOpacity
         onPress={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
         disabled={currentPage === totalPages}
-        style={[
-          styles.paginationButton,
-          currentPage === totalPages && styles.disabledButton,
-        ]}
+        style={[styles.paginationButton, currentPage === totalPages && styles.disabledButton]}
       >
         <ThemedText style={styles.paginationText}>&gt;</ThemedText>
       </TouchableOpacity>
     </View>
   );
 
+  // Estilos dinámicos usando un array de estilos
+  const filterContainerStyle = [
+    styles.filterContainer,
+    screenWidth < 768 ? { flexDirection: 'column' as const } : { flexDirection: 'row' as const },
+  ];
+
+  const dateInputContainerStyle = [
+    styles.dateInputContainer,
+    screenWidth < 768 ? { width: '100%' } : { flex: 1, marginRight: 8 },
+  ];
+
   return (
     <ThemedView style={styles.container}>
       <ThemedText style={styles.title}>Todas las Operaciones</ThemedText>
 
-      <View style={styles.filterContainer}>
-        <TextInput
-          label="Fecha Inicio"
-          value={formatDate(startDate)}
-          style={styles.dateInput}
-          onFocus={() => {
-            setSelectedDateInput('start');
-            setDatePickerOpen(true);
-          }}
-          right={<TextInput.Icon icon="calendar" />}
-        />
-        <TextInput
-          label="Fecha Fin"
-          value={formatDate(endDate)}
-          style={styles.dateInput}
-          onFocus={() => {
-            setSelectedDateInput('end');
-            setDatePickerOpen(true);
-          }}
-          right={<TextInput.Icon icon="calendar" />}
-        />
+      <View style={filterContainerStyle}>
+        <View style={dateInputContainerStyle}>
+          <TextInput
+            label="Fecha Inicio"
+            value={formatDate(startDate)}
+            style={styles.dateInput}
+            onFocus={() => {
+              setSelectedDateInput('start');
+              setDatePickerOpen(true);
+            }}
+            right={<TextInput.Icon icon="calendar" />}
+          />
+        </View>
+        <View style={dateInputContainerStyle}>
+          <TextInput
+            label="Fecha Fin"
+            value={formatDate(endDate)}
+            style={styles.dateInput}
+            onFocus={() => {
+              setSelectedDateInput('end');
+              setDatePickerOpen(true);
+            }}
+            right={<TextInput.Icon icon="calendar" />}
+          />
+        </View>
         {(startDate || endDate) && (
-          <Button 
-            mode="outlined" 
+          <Button
+            mode="outlined"
             onPress={() => {
               setStartDate(undefined);
               setEndDate(undefined);
@@ -244,7 +208,7 @@ const AdminScreen = () => {
           </Button>
         )}
       </View>
-      
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
@@ -262,7 +226,6 @@ const AdminScreen = () => {
         </ScrollView>
       )}
 
-      {/* Paginación fija en la parte inferior */}
       <View style={styles.fixedPaginationContainer}>
         {renderPagination()}
       </View>
@@ -294,6 +257,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 8,
   },
+  dateInputContainer: {
+    // Estilos del contenedor del TextInput
+  },
   dateInput: {
     backgroundColor: '#fff',
   },
@@ -302,7 +268,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    marginBottom: 60, // Espacio para la paginación fija
+    marginBottom: 60,
   },
   card: {
     padding: 16,
