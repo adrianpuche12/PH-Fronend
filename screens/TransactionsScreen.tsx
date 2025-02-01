@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { Button, Snackbar } from 'react-native-paper';
+import { Button, Snackbar, Checkbox } from 'react-native-paper';
 import FormScreen from './FormScreen';
 
 const TransactionsScreen = () => {
@@ -276,24 +276,30 @@ return (
       ) : (
         <>
           <View style={styles.filterContainer}>
-            <TouchableOpacity
-              style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
-              onPress={() => handleFilterChange('all')}
-            >
+            <View style={styles.checkboxContainer}>
+              <Checkbox
+                status={filter === 'all' ? 'checked' : 'unchecked'}
+                onPress={() => handleFilterChange('all')}
+                color="#007bff"
+              />
               <Text style={styles.filterText}>Todos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, filter === 'income' && styles.activeFilter]}
-              onPress={() => handleFilterChange('income')}
-            >
+            </View>
+            <View style={styles.checkboxContainer}>
+              <Checkbox
+                status={filter === 'income' ? 'checked' : 'unchecked'}
+                onPress={() => handleFilterChange('income')}
+                color="#007bff"
+              />
               <Text style={styles.filterText}>Ingresos</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, filter === 'expense' && styles.activeFilter]}
-              onPress={() => handleFilterChange('expense')}
-            >
+            </View>
+            <View style={styles.checkboxContainer}>
+              <Checkbox
+                status={filter === 'expense' ? 'checked' : 'unchecked'}
+                onPress={() => handleFilterChange('expense')}
+                color="#007bff"
+              />
               <Text style={styles.filterText}>Egresos</Text>
-            </TouchableOpacity>
+            </View>
           </View>
           <FlatList
             data={currentTransactions}
@@ -568,6 +574,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: 20,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   filterButton: {
     padding: 10,
