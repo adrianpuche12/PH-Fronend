@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, Text, ScrollView, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import { TextInput, Button, RadioButton, Card, Title, Snackbar } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
@@ -23,28 +23,38 @@ const DynamicFormScreen = () => {
   });
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [selectedDateField, setSelectedDateField] = useState<'periodStart' | 'periodEnd' | ''>('');
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const [snackbarType, setSnackbarType] = useState<'success' | 'error'>('success');
+  const [showMessageCard, setShowMessageCard] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+  const slideAnim = useState(new Animated.Value(-100))[0]; // Inicia fuera de la pantalla
   const [showFormScreen, setShowFormScreen] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
 
   // Función para mostrar mensajes
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setSnackbarMessage(text);
-    setSnackbarType(type);
-    setSnackbarVisible(true);
-  };
-
-  // Efecto para ocultar el mensaje después de 3 segundos
-  useEffect(() => {
-    if (snackbarVisible) {
-      const timer = setTimeout(() => {
-        setSnackbarVisible(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [snackbarVisible]);
+  const showMessage = (type: 'success' | 'error', message: string) => {
+    setMessage(message);
+        setMessageType(type);
+        setShowMessageCard(true);
+    
+        // Animación de entrada
+        Animated.timing(slideAnim, {
+          toValue: 0, // Desliza hacia la posición 0
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+    
+        // Ocultar después de 3 segundos
+        setTimeout(() => hideMessage(), 3000);
+      };
+    
+      const hideMessage = () => {
+        // Animación de salida
+        Animated.timing(slideAnim, {
+          toValue: -100, // Desliza fuera de la pantalla
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => setShowMessageCard(false));
+      };
 
   // Función para manejar cambios en los campos de entrada
   const handleInputChange = (field: string, value: string) => {
@@ -318,14 +328,23 @@ const DynamicFormScreen = () => {
         />
       </ScrollView>
 
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
-        style={{ backgroundColor: snackbarType === 'success' ? '#4caf50' : '#f44336' }}
-      >
-        {snackbarMessage}
-      </Snackbar>
+      {/* Tarjeta de mensajes con animación de slide */}
+            {showMessageCard && (
+              <Animated.View
+                style={[
+                  styles.messageCard,
+                  {
+                    transform: [{ translateY: slideAnim }],
+                  },
+                ]}
+              >
+                <Card style={messageType === 'success' ? styles.successCard : styles.errorCard}>
+                  <Card.Content>
+                    <Title style={styles.messageText}>{message}</Title>
+                  </Card.Content>
+                </Card>
+              </Animated.View>
+            )}
     </KeyboardAvoidingView>
   );
 };
@@ -360,6 +379,24 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 16,
+  },
+  messageCard: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    zIndex: 2, // Asegura que esté por encima del AdminDashboard
+  },
+  successCard: {
+    backgroundColor: '#4CAF50',
+  },
+  errorCard: {
+    backgroundColor: '#F44336',
+  },
+  messageText: {
+    color: 'white',
+    textAlign: 'center',
   },
 });
 
