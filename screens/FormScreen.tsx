@@ -12,6 +12,7 @@ import {
 import { TextInput, Button, Card, Title } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { Picker } from '@react-native-picker/picker';
+import ResponsiveButton from '@/components/ui/responsiveButton';
 
 interface FormScreenProps {
   onClose?: () => void;
@@ -183,16 +184,9 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
               mode="outlined"
               style={styles.input}
             />
-            <Button mode="contained" onPress={handleOpenModal} style={styles.button}>
-              Enviar
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={() => clearData()}
-              style={[styles.button,]}
-              >
-              {'↻ Limpiar Formulario'}
-            </Button>
+            
+            <ResponsiveButton title="Enviar" onPress={handleOpenModal} mode="contained"/>
+            <ResponsiveButton title="↻ Limpiar Formulario" onPress={clearData} mode="contained"/>
           </Card.Content>
         </Card>
       </ScrollView>

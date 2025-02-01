@@ -15,6 +15,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { Button, Snackbar, Checkbox } from 'react-native-paper';
 import FormScreen from './FormScreen';
+import ResponsiveButton from '@/components/ui/responsiveButton';
 
 const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -260,13 +261,7 @@ return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Transacciones</Text>
-        <Button 
-          mode="contained" 
-          onPress={() => setShowFormScreen(true)}
-          style={styles.createButton}
-        >
-          Crear Nueva Transacción
-        </Button>
+        <ResponsiveButton title="Crear Nueva Transacción" onPress={() => setShowFormScreen(true)} mode='contained' />
       </View>
       {isLoading ? (
         <View style={styles.loadingContainer}>

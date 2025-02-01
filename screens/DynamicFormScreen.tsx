@@ -4,6 +4,7 @@ import { TextInput, Button, RadioButton, Card, Title, Snackbar } from 'react-nat
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
 import FormScreen from './FormScreen';
+import ResponsiveButton from '@/components/ui/responsiveButton';
 
 
 
@@ -302,13 +303,10 @@ const DynamicFormScreen = () => {
             </RadioButton.Group>
 
             {renderFormFields()}
-            <Button
-              mode="contained"
+            <ResponsiveButton
+              title="Enviar"
               onPress={handleSubmit}
-              style={styles.button}
-            >
-              Enviar
-            </Button>
+              mode="contained" />
           </Card.Content>
         </Card>
         <DatePickerModal
