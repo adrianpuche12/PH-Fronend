@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,15 @@ import { Picker } from '@react-native-picker/picker';
 import { Button, Snackbar, Checkbox } from 'react-native-paper';
 import FormScreen from './FormScreen';
 import ResponsiveButton from '@/components/ui/responsiveButton';
+import BalanceCalculator from '@/components/BalanceCalculator';
+
+interface Transaction {
+  id: number;
+  type: string;
+  amount: number;
+  date: string;
+  description: string;
+}
 
 const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -30,9 +39,10 @@ const TransactionsScreen = () => {
   const [transactionToDelete, setTransactionToDelete] = useState<any | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [showBalanceModal, setShowBalanceModal] = useState(false);
 
   const itemsPerPage = 5;
-  const BACKEND_URL = 'http://192.168.56.1:8080/transactions'; // Cambia esto si es necesario
+  const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
   const { width: screenWidth } = useWindowDimensions();
   const isMobile = screenWidth < 768;
 
@@ -257,11 +267,62 @@ const TransactionsScreen = () => {
   }} />;
 }
 
+
+const flatListRef = useRef<FlatList>(null);
+
+const handleEditFromBalance = (transaction: Transaction) => {
+  const newFilter: 'all' | 'income' | 'expense' = transaction.type === 'income' ? 'income' : 'expense';
+  setFilter(newFilter);
+  
+  setTimeout(() => {
+    const getFilteredList = (transactions: Transaction[], filterType: 'all' | 'income' | 'expense') => {
+      if (filterType === 'all') return transactions;
+      return transactions.filter(t => t.type === filterType);
+    };
+
+    const filtered = getFilteredList(transactions, newFilter);
+    const transactionIndex = filtered.findIndex(t => t.id === transaction.id);
+    
+    if (transactionIndex !== -1) {
+      const pageNumber = Math.floor(transactionIndex / itemsPerPage) + 1;
+      setCurrentPage(pageNumber);
+      
+      setTimeout(() => {
+        setEditingTransaction(transaction);
+        setShowBalanceModal(false);
+        
+        const indexInCurrentPage = transactionIndex % itemsPerPage;
+
+        if (flatListRef.current) {
+          flatListRef.current.scrollToIndex({
+            index: indexInCurrentPage,
+            animated: true,
+            viewPosition: 0.5 
+          });
+        }
+      }, 200);
+    } else {
+      setShowBalanceModal(false);
+    }
+  }, 200);
+};
+
 return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Transacciones</Text>
-        <ResponsiveButton title="Crear Nueva Transacción" onPress={() => setShowFormScreen(true)} mode='contained' />
+        <View style={styles.headerButtons}>
+          <ResponsiveButton 
+            title="Cálculo de Balance" 
+            onPress={() => setShowBalanceModal(true)} 
+            mode="outlined"
+          />
+          <ResponsiveButton 
+            title="Crear Nueva Transacción" 
+            onPress={() => setShowFormScreen(true)} 
+            mode="contained"
+          />
+        </View>
       </View>
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -297,9 +358,12 @@ return (
             </View>
           </View>
           <FlatList
-            data={currentTransactions}
+              ref={flatListRef}
+              data={currentTransactions}
+              style={{ flex: 1, minHeight: 200 }} // Asegura que siempre tenga un espacio mínimo
+              contentContainerStyle={{ flexGrow: 1 }} // Permite que el contenido crezca si es necesario
             renderItem={({ item }) => (
-              <View style={styles.transactionCard}>
+              <View style={styles.transactionCard}>  
                 {editingTransaction && editingTransaction.id === item.id ? (
                   <View>
                     <Picker
@@ -514,6 +578,13 @@ return (
       >
         Transacción registrada correctamente
       </Snackbar>
+      <BalanceCalculator
+        visible={showBalanceModal}
+        onDismiss={() => setShowBalanceModal(false)}
+        transactions={transactions}
+        onEdit={handleEditFromBalance} 
+        onDelete={handleDelete}
+      />
     </SafeAreaView>
   );
 };
@@ -529,6 +600,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
   },
   title: {
     fontSize: 24,
