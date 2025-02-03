@@ -17,6 +17,7 @@ import { Button, Snackbar, Checkbox } from 'react-native-paper';
 import FormScreen from './FormScreen';
 import ResponsiveButton from '@/components/ui/responsiveButton';
 import BalanceCalculator from '@/components/BalanceCalculator';
+import BalanceSummary from '@/components/BalanceSummary';
 
 interface Transaction {
   id: number;
@@ -324,6 +325,7 @@ return (
           />
         </View>
       </View>
+      <BalanceSummary transactions={transactions} />
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
@@ -496,7 +498,7 @@ return (
             <View style={styles.modalContainer}>
               <View style={styles.confirmationCard}>
                 <Text style={styles.confirmationText}>
-                  ¿Estás seguro de que quieres modificar el campo "{fieldNamesInSpanish[modifiedField!]}"?
+                  ¿Estás seguro de que quieres modificar esta transaccion?
                 </Text>
                 <View style={styles.confirmationButtons}>
                   <TouchableOpacity
@@ -600,17 +602,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
+    width: '100%',
   },
   headerButtons: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 10,
+    width: '100%',
+    justifyContent: 'center', 
   },
   title: {
     fontSize: 24,
     color: '#333',
     textAlign: 'center',
-    flex: 1,
+    marginBottom: 16,
+    fontWeight: 'bold',
   },
   createButton: {
     width: '100%',

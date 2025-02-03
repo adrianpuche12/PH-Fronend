@@ -1,62 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, ScrollView, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import { TextInput, Button, RadioButton, Card, Title, Snackbar } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
-import FormScreen from './FormScreen';
 import ResponsiveButton from '@/components/ui/responsiveButton';
 
-
-
 const BACKEND_URL = 'http://192.168.56.1:8080/api/forms';
+const TRANSACTIONS_URL = 'http://192.168.56.1:8080/transactions';
 
 const DynamicFormScreen = () => {
-  const [formType, setFormType] = useState<'closing-deposits' | 'supplier-payments' | 'salary-payments' | ''>('');
+  const [formType, setFormType] = useState<'transaction' | 'closing-deposits' | 'supplier-payments' | 'salary-payments' | ''>('');
   const [formData, setFormData] = useState<any>({
-    closingsCount: '',
+    // Campos para transacciones
+    type: 'income',
     amount: '',
+    date: '',
+    description: '',
+    // Campos adicionales
+    closingsCount: '',
     periodStart: '',
     periodEnd: '',
     username: '',
     supplier: '',
-    description: '',
   });
+
   const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [selectedDateField, setSelectedDateField] = useState<'periodStart' | 'periodEnd' | ''>('');
+  const [selectedDateField, setSelectedDateField] = useState<'date' | 'periodStart' | 'periodEnd' | ''>('');
   const [showMessageCard, setShowMessageCard] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
-  const slideAnim = useState(new Animated.Value(-100))[0]; // Inicia fuera de la pantalla
-  const [showFormScreen, setShowFormScreen] = useState(false);
+  const slideAnim = useState(new Animated.Value(-100))[0];
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
 
-  // Función para mostrar mensajes
   const showMessage = (type: 'success' | 'error', message: string) => {
     setMessage(message);
-        setMessageType(type);
-        setShowMessageCard(true);
-    
-        // Animación de entrada
-        Animated.timing(slideAnim, {
-          toValue: 0, // Desliza hacia la posición 0
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-    
-        // Ocultar después de 3 segundos
-        setTimeout(() => hideMessage(), 3000);
-      };
-    
-      const hideMessage = () => {
-        // Animación de salida
-        Animated.timing(slideAnim, {
-          toValue: -100, // Desliza fuera de la pantalla
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => setShowMessageCard(false));
-      };
+    setMessageType(type);
+    setShowMessageCard(true);
 
-  // Función para manejar cambios en los campos de entrada
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    setTimeout(() => hideMessage(), 3000);
+  };
+
+  const hideMessage = () => {
+    Animated.timing(slideAnim, {
+      toValue: -100,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setShowMessageCard(false));
+  };
+
   const handleInputChange = (field: string, value: string) => {
     if (field === 'amount') {
       const amountRegex = /^[0-9]*[.,]?[0-9]{0,2}$/;
@@ -72,7 +69,6 @@ const DynamicFormScreen = () => {
     setErrors((prevErrors) => ({ ...prevErrors, [field]: false }));
   };
 
-  // Función para manejar la confirmación de fecha
   const handleDateConfirm = (params: { date: Date | undefined }) => {
     if (params.date) {
       const formattedDate = format(params.date, 'yyyy-MM-dd');
@@ -86,10 +82,14 @@ const DynamicFormScreen = () => {
     setSelectedDateField('');
   };
 
-  // Función para validar el formulario
   const validateForm = () => {
     const newErrors: { [key: string]: boolean } = {};
-    if (formType === 'closing-deposits') {
+    
+    if (formType === 'transaction') {
+      if (!formData.amount) newErrors.amount = true;
+      if (!formData.date) newErrors.date = true;
+      if (!formData.description) newErrors.description = true;
+    } else if (formType === 'closing-deposits') {
       if (!formData.amount) newErrors.amount = true;
       if (!formData.username) newErrors.username = true;
       if (!formData.periodStart) newErrors.periodStart = true;
@@ -103,14 +103,14 @@ const DynamicFormScreen = () => {
       if (!formData.username) newErrors.username = true;
       if (!formData.description) newErrors.description = true;
     }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Función para enviar el formulario
   const handleSubmit = async () => {
     if (!formType) {
-      showMessage('error', 'Por favor, seleccione un formulario.');
+      showMessage('error', 'Por favor, seleccione un tipo de operación.');
       return;
     }
 
@@ -120,14 +120,8 @@ const DynamicFormScreen = () => {
       return;
     }
 
-    const amountRegex = /^[0-9]+([.,][0-9]{1,2})?$/;
-    if (!amountRegex.test(formData.amount)) {
-      showMessage('error', 'El monto debe ser un número válido (ej. 100.50).');
-      return;
-    }
-
     try {
-      let url = `${BACKEND_URL}/${formType}`;
+      const url = formType === 'transaction' ? TRANSACTIONS_URL : `${BACKEND_URL}/${formType}`;
       const formToSend = {
         ...formData,
         amount: parseFloat(formData.amount.replace(',', '.')),
@@ -142,13 +136,15 @@ const DynamicFormScreen = () => {
       if (response.ok) {
         showMessage('success', 'Datos enviados correctamente');
         setFormData({
-          closingsCount: '',
+          type: 'income',
           amount: '',
+          date: '',
+          description: '',
+          closingsCount: '',
           periodStart: '',
           periodEnd: '',
           username: '',
           supplier: '',
-          description: '',
         });
         setFormType('');
         setErrors({});
@@ -161,11 +157,6 @@ const DynamicFormScreen = () => {
     }
   };
 
-  if (showFormScreen) {
-    return <FormScreen />;
-  }
-
-  // Renderizar la lista de proveedores
   const renderSupplierList = () => {
     const suppliers = ['Pollo Rey', 'Pollo Cortijo', 'Pollo Bravo'];
     return (
@@ -183,9 +174,54 @@ const DynamicFormScreen = () => {
     );
   };
 
-  // Renderizar los campos del formulario según el tipo
+  const renderTransactionForm = () => (
+    <>
+      <Title style={styles.title}>Selecciona el tipo de transaccion</Title>
+      <RadioButton.Group
+        onValueChange={(value) => handleInputChange('type', value)}
+        value={formData.type}
+      >
+        <RadioButton.Item label="Ingreso" value="income" />
+        <RadioButton.Item label="Egreso" value="expense" />
+      </RadioButton.Group>
+
+      <TextInput
+        label="Monto"
+        value={formData.amount}
+        onChangeText={(value) => handleInputChange('amount', value)}
+        keyboardType="decimal-pad"
+        mode="outlined"
+        style={styles.input}
+        error={errors.amount}
+      />
+
+      <TextInput
+        label="Fecha"
+        value={formData.date}
+        mode="outlined"
+        onFocus={() => {
+          setSelectedDateField('date');
+          setDatePickerVisible(true);
+        }}
+        style={styles.input}
+        error={errors.date}
+      />
+
+      <TextInput
+        label="Descripción"
+        value={formData.description}
+        onChangeText={(value) => handleInputChange('description', value)}
+        mode="outlined"
+        style={styles.input}
+        error={errors.description}
+      />
+    </>
+  );
+
   const renderFormFields = () => {
     switch (formType) {
+      case 'transaction':
+        return renderTransactionForm();
       case 'closing-deposits':
         return (
           <>
@@ -204,6 +240,7 @@ const DynamicFormScreen = () => {
               keyboardType="decimal-pad"
               mode="outlined"
               style={styles.input}
+              error={errors.amount}
             />
             <TextInput
               label="Fecha Desde"
@@ -214,6 +251,7 @@ const DynamicFormScreen = () => {
                 setDatePickerVisible(true);
               }}
               style={styles.input}
+              error={errors.periodStart}
             />
             <TextInput
               label="Fecha Hasta"
@@ -224,6 +262,7 @@ const DynamicFormScreen = () => {
                 setDatePickerVisible(true);
               }}
               style={styles.input}
+              error={errors.periodEnd}
             />
             <TextInput
               label="Usuario"
@@ -231,6 +270,7 @@ const DynamicFormScreen = () => {
               onChangeText={(value) => handleInputChange('username', value)}
               mode="outlined"
               style={styles.input}
+              error={errors.username}
             />
           </>
         );
@@ -246,6 +286,7 @@ const DynamicFormScreen = () => {
               keyboardType="decimal-pad"
               mode="outlined"
               style={styles.input}
+              error={errors.amount}
             />
             <TextInput
               label="Usuario"
@@ -253,6 +294,7 @@ const DynamicFormScreen = () => {
               onChangeText={(value) => handleInputChange('username', value)}
               mode="outlined"
               style={styles.input}
+              error={errors.username}
             />
           </>
         );
@@ -265,6 +307,7 @@ const DynamicFormScreen = () => {
               onChangeText={(value) => handleInputChange('description', value)}
               mode="outlined"
               style={styles.input}
+              error={errors.description}
             />
             <TextInput
               label="Monto"
@@ -273,6 +316,7 @@ const DynamicFormScreen = () => {
               keyboardType="decimal-pad"
               mode="outlined"
               style={styles.input}
+              error={errors.amount}
             />
             <TextInput
               label="Usuario"
@@ -280,6 +324,7 @@ const DynamicFormScreen = () => {
               onChangeText={(value) => handleInputChange('username', value)}
               mode="outlined"
               style={styles.input}
+              error={errors.username}
             />
           </>
         );
@@ -295,18 +340,16 @@ const DynamicFormScreen = () => {
     >
       <ScrollView>
         <Card style={styles.card}>
-          <Card.Content>           
-
+          <Card.Content>
             <Title style={[styles.title, { fontWeight: 'bold' }]}>
-              Formularios Dinámicos
+              Formulario de Operaciones
             </Title>
-            <Title style={styles.title}>Seleccione un formulario</Title>
+            <Title style={styles.title}>Seleccione tipo de operación</Title>
             <RadioButton.Group
-              onValueChange={(value) =>
-                setFormType(value as 'closing-deposits' | 'supplier-payments' | 'salary-payments' | '')
-              }
+              onValueChange={(value: any) => setFormType(value)}
               value={formType}
             >
+              <RadioButton.Item label="Transacción" value="transaction" />
               <RadioButton.Item label="Depósito de Cierres" value="closing-deposits" />
               <RadioButton.Item label="Pago a Proveedores" value="supplier-payments" />
               <RadioButton.Item label="Salarios" value="salary-payments" />
@@ -316,35 +359,36 @@ const DynamicFormScreen = () => {
             <ResponsiveButton
               title="Enviar"
               onPress={handleSubmit}
-              mode="contained" />
+              mode="contained"
+            />
           </Card.Content>
         </Card>
-        <DatePickerModal
-          mode="single"
-          visible={datePickerVisible}
-          onDismiss={() => setDatePickerVisible(false)}
-          onConfirm={handleDateConfirm}
-          locale="es"
-        />
       </ScrollView>
 
-      {/* Tarjeta de mensajes con animación de slide */}
-            {showMessageCard && (
-              <Animated.View
-                style={[
-                  styles.messageCard,
-                  {
-                    transform: [{ translateY: slideAnim }],
-                  },
-                ]}
-              >
-                <Card style={messageType === 'success' ? styles.successCard : styles.errorCard}>
-                  <Card.Content>
-                    <Title style={styles.messageText}>{message}</Title>
-                  </Card.Content>
-                </Card>
-              </Animated.View>
-            )}
+      <DatePickerModal
+        mode="single"
+        visible={datePickerVisible}
+        onDismiss={() => setDatePickerVisible(false)}
+        onConfirm={handleDateConfirm}
+        locale="es"
+      />
+
+      {showMessageCard && (
+        <Animated.View
+          style={[
+            styles.messageCard,
+            {
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          <Card style={messageType === 'success' ? styles.successCard : styles.errorCard}>
+            <Card.Content>
+              <Title style={styles.messageText}>{message}</Title>
+            </Card.Content>
+          </Card>
+        </Animated.View>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -355,18 +399,11 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#f5f5f5',
   },
-  goBackButton: {
-    position: 'absolute',
-    top: 10,
-    color: "#007AFF",
-    left: 10,
-    zIndex: 1,
-  },
   title: {
     fontSize: 24,
     color: '#333',
     textAlign: 'center',
-    flex: 1,
+    marginBottom: 16,
   },
   card: {
     padding: 16,
@@ -377,16 +414,13 @@ const styles = StyleSheet.create({
   input: {
     marginBottom: 16,
   },
-  button: {
-    marginTop: 16,
-  },
   messageCard: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     padding: 16,
-    zIndex: 2, // Asegura que esté por encima del AdminDashboard
+    zIndex: 2,
   },
   successCard: {
     backgroundColor: '#4CAF50',
