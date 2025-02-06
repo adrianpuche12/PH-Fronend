@@ -45,14 +45,9 @@ const TransactionsScreen = () => {
   const itemsPerPage = 5;
   const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
   const { width: screenWidth } = useWindowDimensions();
-  const isMobile = screenWidth < 768;
 
-  const fieldNamesInSpanish: { [key: string]: string } = {
-    type: 'Tipo',
-    amount: 'Monto',
-    date: 'Fecha',
-    description: 'Descripción',
-  };
+  // Consideramos pantalla chica/tablet si el ancho es menor a 768px.
+  const isSmallScreen = screenWidth < 1026;
 
   // Función para crear nueva transacción
   const handleCreateNew = () => {
@@ -74,7 +69,7 @@ const TransactionsScreen = () => {
       });
   
       if (response.ok) {
-        await fetchTransactions(); // Actualizar la lista después de eliminar
+        await fetchTransactions();
         Alert.alert('Éxito', 'Transacción eliminada correctamente');
       } else {
         Alert.alert('Error', 'No se pudo eliminar la transacción');
@@ -88,7 +83,7 @@ const TransactionsScreen = () => {
   };
 
   const fetchTransactions = async () => {
-    setIsLoading(true); // Activar el estado de carga
+    setIsLoading(true);
     try {
       const response = await fetch(BACKEND_URL);
       if (response.ok) {
@@ -100,13 +95,13 @@ const TransactionsScreen = () => {
     } catch (error) {
       console.error('Error al obtener las transacciones', error);
     } finally {
-      setIsLoading(false); // Desactivar el estado de carga
+      setIsLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchTransactions();
-  }, []); // Array vacío para ejecutar solo al montar
+  }, []);
 
   const filteredTransactions = transactions.filter(transaction => {
     if (filter === 'all') return true;
@@ -118,15 +113,12 @@ const TransactionsScreen = () => {
   const currentTransactions = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
 
   const goToPreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
   };
 
   const goToNextPage = () => {
-    if (currentPage < Math.ceil(filteredTransactions.length / itemsPerPage)) {
+    if (currentPage < Math.ceil(filteredTransactions.length / itemsPerPage))
       setCurrentPage(currentPage + 1);
-    }
   };
 
   const goToPage = (pageNumber: number) => {
@@ -135,14 +127,10 @@ const TransactionsScreen = () => {
 
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
   const maxPagesToShow = screenWidth < 768 ? 5 : screenWidth < 1024 ? 10 : 20;
-
   let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
   let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-
-  if (endPage - startPage + 1 < maxPagesToShow) {
+  if (endPage - startPage + 1 < maxPagesToShow)
     startPage = Math.max(1, endPage - maxPagesToShow + 1);
-  }
-
   const pageNumbers = [];
   for (let i = startPage; i <= endPage; i++) {
     pageNumbers.push(i);
@@ -212,20 +200,15 @@ const TransactionsScreen = () => {
   };
 
   const handleDeleteRequest = (transaction: any) => {
-    console.log('Solicitud de borrado:', transaction); // Depuración
-
     Alert.alert(
       'Confirmar Borrado',
       `¿Estás seguro de que quieres borrar esta transacción?\n\nTipo: ${transaction.type}\nMonto: $${transaction.amount}\nFecha: ${transaction.date}\nDescripción: ${transaction.description}`,
       [
-        { text: 'Cancelar', style: 'cancel', onPress: () => console.log('Borrado cancelado') },
+        { text: 'Cancelar', style: 'cancel' },
         { 
           text: 'Borrar', 
           style: 'destructive', 
-          onPress: () => {
-            console.log('Confirmado borrado de la transacción:', transaction.id); // Depuración
-            deleteTransaction(transaction.id);
-          } 
+          onPress: () => deleteTransaction(transaction.id)
         },
       ],
       { cancelable: true }
@@ -233,24 +216,19 @@ const TransactionsScreen = () => {
   };
 
   const deleteTransaction = async (id: number) => {
-    console.log('Iniciando borrado de la transacción con ID:', id); // Depuración
-
     try {
       const response = await fetch(`${BACKEND_URL}/${id}`, { 
         method: 'DELETE',
       });
-
-      console.log('Respuesta del servidor:', response); // Depuración
-
       if (!response.ok) {
-        const errorMessage = await response.text(); // Obtener mensaje del backend si lo hay
+        const errorMessage = await response.text();
         console.error('Error al borrar la transacción:', errorMessage);
         Alert.alert('Error', `No se pudo borrar la transacción. \nDetalles: ${errorMessage}`);
         return;
       }
-
-      // Si la respuesta es exitosa, actualiza el estado de las transacciones
-      setTransactions((prevState: any) => prevState.filter((transaction: any) => transaction.id !== id));
+      setTransactions((prevState: any) =>
+        prevState.filter((transaction: any) => transaction.id !== id)
+      );
       Alert.alert('Éxito', 'La transacción ha sido borrada correctamente.');
     } catch (error) {
       console.error('Error al borrar la transacción:', error);
@@ -261,80 +239,76 @@ const TransactionsScreen = () => {
   };
 
   if (showFormScreen) {
-  return <FormScreen onClose={() => {
-    setShowFormScreen(false);
-    fetchTransactions();
-    setShowSuccessMessage(true);
-  }} />;
-}
+    return (
+      <FormScreen
+        onClose={() => {
+          setShowFormScreen(false);
+          fetchTransactions();
+          setShowSuccessMessage(true);
+        }}
+      />
+    );
+  }
 
+  const flatListRef = useRef<FlatList>(null);
 
-const flatListRef = useRef<FlatList>(null);
-
-const handleEditFromBalance = (transaction: Transaction) => {
-  const newFilter: 'all' | 'income' | 'expense' = transaction.type === 'income' ? 'income' : 'expense';
-  setFilter(newFilter);
-  
-  setTimeout(() => {
-    const getFilteredList = (transactions: Transaction[], filterType: 'all' | 'income' | 'expense') => {
-      if (filterType === 'all') return transactions;
-      return transactions.filter(t => t.type === filterType);
-    };
-
-    const filtered = getFilteredList(transactions, newFilter);
-    const transactionIndex = filtered.findIndex(t => t.id === transaction.id);
+  const handleEditFromBalance = (transaction: Transaction) => {
+    const newFilter: 'all' | 'income' | 'expense' =
+      transaction.type === 'income' ? 'income' : 'expense';
+    setFilter(newFilter);
     
-    if (transactionIndex !== -1) {
-      const pageNumber = Math.floor(transactionIndex / itemsPerPage) + 1;
-      setCurrentPage(pageNumber);
+    setTimeout(() => {
+      const getFilteredList = (transactions: Transaction[], filterType: 'all' | 'income' | 'expense') => {
+        if (filterType === 'all') return transactions;
+        return transactions.filter(t => t.type === filterType);
+      };
+
+      const filtered = getFilteredList(transactions, newFilter);
+      const transactionIndex = filtered.findIndex(t => t.id === transaction.id);
       
-      setTimeout(() => {
-        setEditingTransaction(transaction);
-        setShowBalanceModal(false);
+      if (transactionIndex !== -1) {
+        const pageNumber = Math.floor(transactionIndex / itemsPerPage) + 1;
+        setCurrentPage(pageNumber);
         
-        const indexInCurrentPage = transactionIndex % itemsPerPage;
+        setTimeout(() => {
+          setEditingTransaction(transaction);
+          setShowBalanceModal(false);
+          
+          const indexInCurrentPage = transactionIndex % itemsPerPage;
+          if (flatListRef.current) {
+            flatListRef.current.scrollToIndex({
+              index: indexInCurrentPage,
+              animated: true,
+              viewPosition: 0.5 
+            });
+          }
+        }, 200);
+      } else {
+        setShowBalanceModal(false);
+      }
+    }, 200);
+  };
 
-        if (flatListRef.current) {
-          flatListRef.current.scrollToIndex({
-            index: indexInCurrentPage,
-            animated: true,
-            viewPosition: 0.5 
-          });
-        }
-      }, 200);
-    } else {
-      setShowBalanceModal(false);
-    }
-  }, 200);
-};
-
-return (
+  return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Transacciones</Text>
-        <View style={styles.headerButtons}>
-          <ResponsiveButton 
-            title="Cálculo de Balance" 
-            onPress={() => setShowBalanceModal(true)} 
-            mode="outlined"
-          />
-          <ResponsiveButton 
-            title="Crear Nueva Transacción" 
-            onPress={() => setShowFormScreen(true)} 
-            mode="contained"
-          />
-        </View>
-      </View>
-      <BalanceSummary transactions={transactions} />
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Cargando datos desde la base de datos...</Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.filterContainer}>
-            <View style={styles.checkboxContainer}>
+      {/* Título de la pantalla */}
+      <Text style={styles.title}>Transacciones</Text>
+
+      {/* Sección superior: se renderiza de forma distinta según el tamaño de pantalla */}
+      {isSmallScreen ? (        
+        <View style={styles.summaryContainerVertical}>
+          <View style={styles.verticalBlock}>
+            <ResponsiveButton 
+              title="Cálculo de Balance" 
+              onPress={() => setShowBalanceModal(true)} 
+              mode="outlined"
+            />
+          </View>
+          <View style={styles.verticalBlock}>
+            <BalanceSummary transactions={transactions} />
+          </View>
+          <View style={styles.checkboxRow}>
+            <View style={styles.checkboxItem}>
               <Checkbox
                 status={filter === 'all' ? 'checked' : 'unchecked'}
                 onPress={() => handleFilterChange('all')}
@@ -342,7 +316,7 @@ return (
               />
               <Text style={styles.filterText}>Todos</Text>
             </View>
-            <View style={styles.checkboxContainer}>
+            <View style={styles.checkboxItem}>
               <Checkbox
                 status={filter === 'income' ? 'checked' : 'unchecked'}
                 onPress={() => handleFilterChange('income')}
@@ -350,7 +324,7 @@ return (
               />
               <Text style={styles.filterText}>Ingresos</Text>
             </View>
-            <View style={styles.checkboxContainer}>
+            <View style={styles.checkboxItem}>
               <Checkbox
                 status={filter === 'expense' ? 'checked' : 'unchecked'}
                 onPress={() => handleFilterChange('expense')}
@@ -359,11 +333,62 @@ return (
               <Text style={styles.filterText}>Egresos</Text>
             </View>
           </View>
+        </View>
+      ) : (
+        // Layout horizontal para pantallas grandes:
+        <View style={styles.summaryContainer}>
+          <View style={[styles.leftCheckboxes, { width: '30%' }]}>
+            <View style={styles.checkboxItem}>
+              <Checkbox
+                status={filter === 'all' ? 'checked' : 'unchecked'}
+                onPress={() => handleFilterChange('all')}
+                color="#007bff"
+              />
+              <Text style={styles.filterText}>Todos</Text>
+            </View>
+            <View style={styles.checkboxItem}>
+              <Checkbox
+                status={filter === 'income' ? 'checked' : 'unchecked'}
+                onPress={() => handleFilterChange('income')}
+                color="#007bff"
+              />
+              <Text style={styles.filterText}>Ingresos</Text>
+            </View>
+            <View style={styles.checkboxItem}>
+              <Checkbox
+                status={filter === 'expense' ? 'checked' : 'unchecked'}
+                onPress={() => handleFilterChange('expense')}
+                color="#007bff"
+              />
+              <Text style={styles.filterText}>Egresos</Text>
+            </View>
+          </View>
+          <View style={[styles.centerCard, { width: '40%' }]}>
+            <BalanceSummary transactions={transactions} />
+          </View>
+          <View style={[styles.rightButton, { width: '30%' }]}>
+            <ResponsiveButton 
+              title="Cálculo de Balance" 
+              onPress={() => setShowBalanceModal(true)} 
+              mode="outlined"
+            />
+          </View>
+        </View>
+      )}
+
+      {/* Sección de listado, modales, paginación y demás */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Cargando datos desde la base de datos...</Text>
+        </View>
+      ) : (
+        <>
           <FlatList
-              ref={flatListRef}
-              data={currentTransactions}
-              style={{ flex: 1, minHeight: 200 }} // Asegura que siempre tenga un espacio mínimo
-              contentContainerStyle={{ flexGrow: 1 }} // Permite que el contenido crezca si es necesario
+            ref={flatListRef}
+            data={currentTransactions}
+            style={{ flex: 1, minHeight: 200 }}
+            contentContainerStyle={{ flexGrow: 1 }}
             renderItem={({ item }) => (
               <View style={styles.transactionCard}>  
                 {editingTransaction && editingTransaction.id === item.id ? (
@@ -395,14 +420,9 @@ return (
                     />
                     <TouchableOpacity
                       onPress={handleSaveClick}
-                      style={{
-                        backgroundColor: '#28a745',
-                        padding: 10,
-                        borderRadius: 5,
-                        alignItems: 'center',
-                      }}
+                      style={styles.saveButton}
                     >
-                      <Text style={{ color: 'white' }}>Guardar</Text>
+                      <Text style={styles.saveButtonText}>Guardar</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -422,16 +442,9 @@ return (
                     <View style={styles.buttonContainer}>
                       <TouchableOpacity
                         onPress={() => startEditing(item)}
-                         style={{
-                          backgroundColor: '#107aff',
-                          padding: 10,
-                          borderRadius: 5,
-                          alignItems: 'center',
-                          flex: 1,
-                          marginRight: 5,
-                        }}
+                        style={styles.editButton}
                       >
-                        <Text style={{ color: 'white' }}>Editar</Text>
+                        <Text style={styles.buttonText}>Editar</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDelete(item)}
@@ -498,20 +511,20 @@ return (
             <View style={styles.modalContainer}>
               <View style={styles.confirmationCard}>
                 <Text style={styles.confirmationText}>
-                  ¿Estás seguro de que quieres modificar esta transaccion?
+                  ¿Estás seguro de que quieres modificar esta transacción?
                 </Text>
                 <View style={styles.confirmationButtons}>
                   <TouchableOpacity
                     onPress={handleCancel}
-                    style={{ backgroundColor: '#ff4444', padding: 10, borderRadius: 5, width: '45%' }}
+                    style={styles.modalButtonCancel}
                   >
-                    <Text style={{ color: 'white', textAlign: 'center' }}>Cancelar</Text>
+                    <Text style={styles.modalButtonText}>Cancelar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={saveTransaction}
-                    style={{ backgroundColor: '#28a745', padding: 10, borderRadius: 5, width: '45%' }}
+                    style={styles.modalButtonConfirm}
                   >
-                    <Text style={{ color: 'white', textAlign: 'center' }}>Modificar</Text>
+                    <Text style={styles.modalButtonText}>Modificar</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -532,16 +545,15 @@ return (
                 <View style={styles.confirmationButtons}>
                   <TouchableOpacity
                     onPress={handleCloseNoChangesModal}
-                    style={{ backgroundColor: '#007AFF', padding: 10, borderRadius: 5, width: '50%' }}
+                    style={styles.modalButtonConfirm}
                   >
-                    <Text style={{ color: 'white', textAlign: 'center' }}>Cerrar</Text>
+                    <Text style={styles.modalButtonText}>Cerrar</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           </Modal>
 
-          {/* Modal de confirmación de eliminación */}
           <Modal
             visible={showDeleteConfirmation}
             transparent={true}
@@ -556,15 +568,15 @@ return (
                 <View style={styles.confirmationButtons}>
                   <TouchableOpacity
                     onPress={() => setShowDeleteConfirmation(false)}
-                    style={{ backgroundColor: '#6c757d', padding: 10, borderRadius: 5, width: '45%' }}
+                    style={styles.modalButtonCancel}
                   >
-                    <Text style={{ color: 'white', textAlign: 'center' }}>Cancelar</Text>
+                    <Text style={styles.modalButtonText}>Cancelar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={confirmDelete}
-                    style={{ backgroundColor: '#dc3545', padding: 10, borderRadius: 5, width: '45%' }}
+                    style={styles.modalButtonDelete}
                   >
-                    <Text style={{ color: 'white', textAlign: 'center' }}>Eliminar</Text>
+                    <Text style={styles.modalButtonText}>Eliminar</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -572,6 +584,7 @@ return (
           </Modal>
         </>
       )}
+
       <Snackbar
         visible={showSuccessMessage}
         onDismiss={() => setShowSuccessMessage(false)}
@@ -580,6 +593,7 @@ return (
       >
         Transacción registrada correctamente
       </Snackbar>
+
       <BalanceCalculator
         visible={showBalanceModal}
         onDismiss={() => setShowBalanceModal(false)}
@@ -597,79 +611,65 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    width: '100%',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-    width: '100%',
-    justifyContent: 'center', 
-  },
   title: {
     fontSize: 24,
     color: '#333',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
     fontWeight: 'bold',
   },
-  createButton: {
-    width: '100%',
-    marginTop: 10,
-    backgroundColor: '#28a745',
-  },
-  buttonContainer: {
+  // Layout horizontal para pantallas grandes
+  summaryContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 10,
-    gap: 10,
-  },
-  editButton: {
-    backgroundColor: '#ffc107',
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-    alignItems: 'center',
-  },
-  deleteButton: {
-    backgroundColor: '#dc3545',
-    padding: 10,
-    borderRadius: 5,
-    flex: 1,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterButton: {
-    padding: 10,
-    borderRadius: 5,
+    padding: 8,
     backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ccc',
+    borderRadius: 8,
+    elevation: 3,
+    marginBottom: 16,
   },
-  activeFilter: {
-    backgroundColor: '#007bff',
-    borderColor: '#007bff',
+  // Layout vertical para celulares/tablets
+  summaryContainerVertical: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    elevation: 3,
+    marginBottom: 16,
+  },
+  verticalBlock: {
+    width: '100%',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  // Contenedor para checkboxes en fila
+  checkboxRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    width: '100%',
+  },
+  leftCheckboxes: {
+    justifyContent: 'center',
+  },
+  checkboxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 2,
   },
   filterText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#555',
+    marginLeft: 4,
+  },
+  centerCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rightButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   transactionCard: {
     padding: 16,
@@ -695,29 +695,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 4,
   },
-  modalContainer: {
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    gap: 10,
+  },
+  editButton: {
+    backgroundColor: '#107aff',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 5,
+  },
+  deleteButton: {
+    backgroundColor: '#dc3545',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  saveButton: {
+    backgroundColor: '#28a745',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: 'white',
+  },
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  confirmationCard: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 20,
-    width: '80%',
-    elevation: 5,
-  },
-  confirmationText: {
-    fontSize: 18,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  confirmationButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#007AFF',
   },
   paginationContainer: {
     flexDirection: 'row',
@@ -750,20 +770,54 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.5,
   },
-  loadingContainer: {
+  modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#007AFF',
+  confirmationCard: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 20,
+    width: '80%',
+    elevation: 5,
   },
-  buttonsContainer: {
+  confirmationText: {
+    fontSize: 18,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  confirmationButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+    justifyContent: 'center',
+    gap: 20,
+  },
+  modalButtonCancel: {
+    backgroundColor: '#ff4444',
+    padding: 10,
+    borderRadius: 5,
+    width: '45%',
+    alignItems: 'center',
+  },
+  modalButtonConfirm: {
+    backgroundColor: '#28a745',
+    padding: 10,
+    borderRadius: 5,
+    width: '45%',
+    alignItems: 'center',
+  },
+  modalButtonDelete: {
+    backgroundColor: '#dc3545',
+    padding: 10,
+    borderRadius: 5,
+    width: '45%',
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'white',
+    textAlign: 'center',
   },
 });
 
