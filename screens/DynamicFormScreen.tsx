@@ -378,6 +378,7 @@ const DynamicFormScreen = () => {
             title="↻ Limpiar Formulario"
             onPress={clearData} 
             mode="contained"
+            backgroundColor='#f5742f'
             />
           </Card.Content>
         </Card>

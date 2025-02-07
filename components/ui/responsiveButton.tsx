@@ -6,10 +6,13 @@ interface ResponsiveButtonProps {
   title: string;
   onPress: () => void;
   mode?: 'contained' | 'outlined'; // Permite cambiar entre "contained" y "outlined"
+  backgroundColor?: string; // Cambiar el color si lo requiere 
 }
 
-const ResponsiveButton: React.FC<ResponsiveButtonProps> = ({ title, onPress, mode = 'contained' }) => {
+const ResponsiveButton: React.FC<ResponsiveButtonProps> = ({ title, onPress, mode = 'contained', backgroundColor }) => {
   const { width } = useWindowDimensions(); // Obtiene el ancho de la pantalla
+
+  const buttonBackgroundColor = backgroundColor || '#624aff'; // Color por defecto o el que se ingresa
 
   return (
     <Button
@@ -19,6 +22,7 @@ const ResponsiveButton: React.FC<ResponsiveButtonProps> = ({ title, onPress, mod
       style={[
         styles.button,
         width > 768 ? styles.desktopButton : styles.mobileButton, // Aplica diferentes estilos según el ancho
+        { backgroundColor: buttonBackgroundColor }, // Aplicar el color de fondo
       ]}
     >
       {title}
