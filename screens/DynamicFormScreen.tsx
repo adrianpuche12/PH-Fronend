@@ -54,6 +54,18 @@ const DynamicFormScreen = () => {
     }).start(() => setShowMessageCard(false));
   };
 
+  const clearData = () => {
+    handleInputChange('amount', '');
+    handleInputChange('date', '');
+    handleInputChange('description', '');
+    handleInputChange('type', 'income');
+    handleInputChange('closingsCount', '');
+    handleInputChange('periodStart', '');
+    handleInputChange('periodEnd', '');
+    handleInputChange('username', '');
+    handleInputChange('supplier', '');
+  };
+
   const handleInputChange = (field: string, value: string) => {
     if (field === 'amount') {
       const amountRegex = /^[0-9]*[.,]?[0-9]{0,2}$/;
@@ -360,6 +372,12 @@ const DynamicFormScreen = () => {
               title="Enviar"
               onPress={handleSubmit}
               mode="contained"
+            />
+
+            <ResponsiveButton 
+            title="↻ Limpiar Formulario"
+            onPress={clearData} 
+            mode="contained"
             />
           </Card.Content>
         </Card>
