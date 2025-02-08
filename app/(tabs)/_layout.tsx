@@ -7,9 +7,12 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuth } from '@/context/AuthContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { roles } = useAuth();
+  const isAdmin = roles.includes('admin');
 
   return (
     <Tabs
@@ -24,19 +27,37 @@ export default function TabLayout() {
           },
           default: {},
         }),
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Usuario',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <IconSymbol 
+              size={28} 
+              name="person.fill" 
+              color={color} 
+            />
+          ),
+          href: isAdmin ? null : '/',
+          tabBarStyle: isAdmin ? { display: 'none' } : undefined
         }}
       />
+
       <Tabs.Screen
         name="admin"
         options={{
           title: 'Admin',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chevron.left.forwardslash.chevron.right" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <IconSymbol 
+              size={28} 
+              name="chevron.left.forwardslash.chevron.right" 
+              color={color} 
+            />
+          ),
+          href: isAdmin ? '/admin' : null,
+          tabBarStyle: !isAdmin ? { display: 'none' } : undefined
         }}
       />
     </Tabs>

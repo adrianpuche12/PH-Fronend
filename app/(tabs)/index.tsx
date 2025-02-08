@@ -1,8 +1,6 @@
 import React from 'react';
-import User from '@/screens/UserDashboard';
+import UserDashboard from '@/screens/UserDashboard';
 
-export default function AdmScreen() {
-  return (
-    <User />
-  );
+export default function UserScreen() {
+  return <UserDashboard />;
 }

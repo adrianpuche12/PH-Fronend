@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';  
 import { Button, IconButton } from 'react-native-paper';  
+import { router } from 'expo-router';
 import TransactionsScreen from './TransactionsScreen';
-import DynamicFormScreen from './DynamicFormScreen';
 import AdminScreen from './AdminScreen';
+import LogoutButton from '@/components/LogoutButton';
+import { useAuth } from '@/context/AuthContext';
 
 const AdminDashboard = () => {
   const [activeScreen, setActiveScreen] = useState<'transactions' | 'admin' | null>(null);
+  const { userName } = useAuth();
 
   return (
     <View style={styles.container}>
@@ -17,6 +20,9 @@ const AdminDashboard = () => {
         onPress={() => setActiveScreen(null)}
         style={styles.homeButton}
       />
+
+      {/* Botón de Logout */}
+      <LogoutButton />
 
       {/* Botones fijos arriba */}
       <View style={styles.buttonContainer}>
@@ -45,7 +51,8 @@ const AdminDashboard = () => {
         {activeScreen === 'admin' && <AdminScreen />}
         {activeScreen === null && (
           <View style={styles.dashboardContainer}>
-            <Text style={styles.dashboardText}>Bienvenido al Panel de Administrador</Text>
+            <Text style={styles.welcomeText}>Bienvenido, {userName}</Text>
+            <Text style={styles.dashboardText}>Panel de Administrador</Text>
           </View>
         )}
       </View>
@@ -101,6 +108,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flex: 1,
+  },
+  welcomeText: {
+    fontSize: 20,
+    color: '#333',
+    marginBottom: 8,
   },
   dashboardText: {
     fontSize: 24,
