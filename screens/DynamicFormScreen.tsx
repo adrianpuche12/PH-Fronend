@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Animated, Image, Text, useWindowDimensions} from 'react-native';
 import { TextInput, Button, RadioButton, Card, Title, Snackbar } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
@@ -9,6 +9,10 @@ const BACKEND_URL = 'http://192.168.56.1:8080/api/forms';
 const TRANSACTIONS_URL = 'http://192.168.56.1:8080/transactions';
 
 const DynamicFormScreen = () => {
+
+  const { width} = useWindowDimensions();
+  const isMobile = width <= 425;
+
   const [formType, setFormType] = useState<'transaction' | 'closing-deposits' | 'supplier-payments' | 'salary-payments' | ''>('');
   const [formData, setFormData] = useState<any>({
     // Campos para transacciones
@@ -353,9 +357,16 @@ const DynamicFormScreen = () => {
       <ScrollView>
         <Card style={styles.card}>
           <Card.Content>
-            <Title style={[styles.title, { fontWeight: 'bold' }]}>
-              Formulario de Operaciones
-            </Title>
+            <View style={styles.headerContainer}>
+              <Image
+              source={require('@/assets/images/logo_proyecto_Humberto.jpg')}//
+              style={[styles.logo, isMobile && styles.logoMobile]}
+              resizeMode="contain"
+              />
+            </View>
+              <Text style={[styles.title, { fontWeight: 'bold' }]}>
+                Formulario de Operaciones
+              </Text>
             <Title style={styles.title}>Seleccione tipo de operación</Title>
             <RadioButton.Group
               onValueChange={(value: any) => setFormType(value)}
@@ -450,6 +461,24 @@ const styles = StyleSheet.create({
   messageText: {
     color: 'white',
     textAlign: 'center',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginTop: 50,
+    position: 'absolute',
+    left: 0,
+  },
+  logoMobile: {
+    marginTop: 0,
+    position: 'relative',
+    right: 'auto',
   },
 });
 
