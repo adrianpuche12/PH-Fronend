@@ -33,5 +33,5 @@ jobs:
 
       - name: Push Docker images
         run: |
-          docker push baunmanpeter/humberto:humbertofrontend
-          docker push baunmanpeter/humberto:humbertofrontend-${{ github.sha }}
+          docker push baumanpeter/humberto:humbertofrontend
+          docker push baumanpeter/humberto:humbertofrontend-${{ github.sha }}
