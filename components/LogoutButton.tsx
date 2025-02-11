@@ -6,6 +6,8 @@ import { StyleSheet } from 'react-native';
 const LogoutButton = () => {
   const { logout } = useAuth();
 
+
+  
   return (
     <IconButton
       icon="logout"
