@@ -25,9 +25,9 @@ jobs:
       - name: Build and tag Docker image
         run: |
           set -e
-          IMAGE_NAME=baunmanpeter/humbertofrontend
-          IMAGE_LATEST=baunmanpeter/humberto:humbertofrontend
-          IMAGE_SHA=baunmanpeter/humberto:humbertofrontend-${{ github.sha }}
+          IMAGE_NAME=baumanpeter/humbertofrontend
+          IMAGE_LATEST=baumanpeter/humberto:humbertofrontend
+          IMAGE_SHA=baumanpeter/humberto:humbertofrontend-${{ github.sha }}
           
           docker build -t $IMAGE_LATEST -t $IMAGE_SHA ./frontend
 
