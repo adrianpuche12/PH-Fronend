@@ -33,6 +33,8 @@ interface Transaction {
   supplier?: string;
 }
 
+
+
 const ITEMS_PER_PAGE = 5;
 
 
