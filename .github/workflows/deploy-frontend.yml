@@ -25,13 +25,31 @@ jobs:
       - name: Build and tag Docker image
         run: |
           set -e
-          IMAGE_NAME=baumanpeter/humbertofrontend
           IMAGE_LATEST=baumanpeter/humberto:humbertofrontend
           IMAGE_SHA=baumanpeter/humberto:humbertofrontend-${{ github.sha }}
           
+          echo "🚀 Construyendo la imagen Docker..."
           docker build -t $IMAGE_LATEST -t $IMAGE_SHA ./frontend
+          echo "✅ Imágenes construidas correctamente."
 
       - name: Push Docker images
         run: |
+          set -e
+          echo "📤 Subiendo las imágenes a Docker Hub..."
           docker push baumanpeter/humberto:humbertofrontend
-          docker push baumanpeter/humberto:humbertofrontend-${{ github.sha }}
+          docker push baumanpeter/humberto:humbertofrontend-${{ github.sha }}
+          echo "✅ Imágenes subidas exitosamente a Docker Hub."
+
+      - name: Verify Push Success
+        run: |
+          set -e
+          IMAGE_LATEST=baumanpeter/humberto:humbertofrontend
+          IMAGE_SHA=baumanpeter/humberto:humbertofrontend-${{ github.sha }}
+
+          echo "🔍 Verificando si las imágenes están en Docker Hub..."
+          if docker pull $IMAGE_LATEST && docker pull $IMAGE_SHA; then
+            echo "✅ Verificación exitosa: las imágenes están en Docker Hub."
+          else
+            echo "❌ Error: No se encontraron las imágenes en Docker Hub."
+            exit 1
+          fi
