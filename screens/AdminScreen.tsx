@@ -38,6 +38,8 @@ interface Transaction {
 const ITEMS_PER_PAGE = 5;
 
 
+
+
 // y considera egresos de tipo SUPPLIER, SALARY y expense.
 const BalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
   const ingresos = transactions
