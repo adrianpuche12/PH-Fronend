@@ -16,18 +16,22 @@ function RootLayoutNav() {
 
     const handleNavigation = () => {
       if (!isAuthenticated) {
+        // Si no está autenticado, redirige al login
         if (currentSegment !== 'login') {
           router.replace('/login');
         }
       } else {
         const isAdmin = roles.includes('admin');
         if (isAdmin) {
-          if (currentSegment !== 'admin') {
-            router.replace('/admin');
+          // El admin tiene acceso a todo el sistema, no se fuerza ninguna redirección
+          if (currentSegment === 'login') {
+            router.replace('/admin'); // Redirige al admin a su dashboard
           }
         } else {
-          if (!currentSegment || currentSegment !== 'index') {
-            router.replace('/');
+          // Usuarios normales solo pueden acceder a '/' o rutas específicas
+          const allowedSegments = ['index', '(tabs)']; // Rutas permitidas para usuarios normales
+          if (!allowedSegments.includes(currentSegment)) {
+            router.replace('/'); // Redirige a la ruta raíz
           }
         }
       }

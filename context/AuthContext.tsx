@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-const KEYCLOAK_ADAPTER_URL = 'http://192.168.100.3:8088'; // cambiar por tu IP
+const KEYCLOAK_ADAPTER_URL = 'http://localhost:8088'; // cambiar por tu IP
 
 interface AuthState {
   accessToken: string | null;

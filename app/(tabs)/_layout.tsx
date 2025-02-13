@@ -40,8 +40,7 @@ export default function TabLayout() {
               color={color} 
             />
           ),
-          href: isAdmin ? null : '/',
-          tabBarStyle: isAdmin ? { display: 'none' } : undefined
+          
         }}
       />
 
