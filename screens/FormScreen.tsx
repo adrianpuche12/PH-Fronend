@@ -13,6 +13,7 @@ import { TextInput, Button, Card, Title } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { Picker } from '@react-native-picker/picker';
 import ResponsiveButton from '@/components/ui/responsiveButton';
+import { REACT_APP_API_URL } from '../config';
 
 interface FormScreenProps {
   onClose?: () => void;
@@ -31,7 +32,7 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
 
   const [modalVisible, setModalVisible] = useState(false);
 
-  const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
+  const BACKEND_URL = `${REACT_APP_API_URL}/transactions`
 
   const handleOpenModal = () => {
     if (!type || !amount || !date || !description) {

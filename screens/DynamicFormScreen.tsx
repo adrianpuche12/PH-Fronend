@@ -4,9 +4,11 @@ import { TextInput, Button, RadioButton, Card, Title, Snackbar } from 'react-nat
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
 import ResponsiveButton from '@/components/ui/responsiveButton';
+import { REACT_APP_API_URL } from '../config';
 
-const BACKEND_URL = 'http://192.168.56.1:8080/api/forms';
-const TRANSACTIONS_URL = 'http://192.168.56.1:8080/transactions';
+// Versión básica corregida (sin validación)
+const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
+const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
 

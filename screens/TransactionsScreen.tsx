@@ -18,6 +18,7 @@ import FormScreen from './FormScreen';
 import ResponsiveButton from '@/components/ui/responsiveButton';
 import BalanceCalculator from '@/components/BalanceCalculator';
 import BalanceSummary from '@/components/BalanceSummary';
+import { REACT_APP_API_URL } from '../config';
 
 interface Transaction {
   id: number;
@@ -43,7 +44,7 @@ const TransactionsScreen = () => {
   const [showBalanceModal, setShowBalanceModal] = useState(false);
 
   const itemsPerPage = 5;
-  const BACKEND_URL = 'http://192.168.56.1:8080/transactions';
+  const BACKEND_URL = `${REACT_APP_API_URL}/transactions`;
   const { width: screenWidth } = useWindowDimensions();
 
   // Consideramos pantalla chica/tablet si el ancho es menor a 768px.

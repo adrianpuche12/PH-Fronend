@@ -2,8 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-
-const KEYCLOAK_ADAPTER_URL = 'http://localhost:8088'; // cambiar por tu IP
+import { API_KEYCLOAK_ADAPTER_URL } from '../config'; 
 
 interface AuthState {
   accessToken: string | null;
@@ -57,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshAccessToken = async () => {
     try {
       const response = await axios.post(
-        `${KEYCLOAK_ADAPTER_URL}/token`,
+        `${API_KEYCLOAK_ADAPTER_URL}/token`, // CAMBIADO
         new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token: authState.refreshToken!,
@@ -97,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const response = await axios.post(
-        `${KEYCLOAK_ADAPTER_URL}/login`,
+        `${API_KEYCLOAK_ADAPTER_URL}/login`, // CAMBIADO
         new URLSearchParams({
           username,
           password,
@@ -109,7 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { access_token, refresh_token, expires_in } = response.data;
       const decodedToken = jwtDecode<any>(access_token);
 
-      // Log para debugging
       console.log('Decoded token:', decodedToken);
       console.log('Roles from token:', decodedToken.realm_access?.roles);
 

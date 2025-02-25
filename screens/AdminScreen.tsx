@@ -18,6 +18,7 @@ import { DatePickerModal } from 'react-native-paper-dates';
 import { useFocusEffect } from '@react-navigation/native';
 import LogoutButton from '@/components/LogoutButton';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { REACT_APP_API_URL } from '../config';
 
 // Actualizamos la interfaz para incluir los nuevos tipos
 interface Transaction {
@@ -112,7 +113,7 @@ const AdminScreen = () => {
     setLoading(true);
     try {
       // Se obtienen las operaciones desde el endpoint de operaciones.
-      let urlOperations = 'http://192.168.56.1:8080/api/operations/all';
+      let urlOperations = `${REACT_APP_API_URL}/api/operations/all`;
       if (start && end) {
         const startStr = start.toISOString().split('T')[0];
         const endStr = end.toISOString().split('T')[0];
@@ -124,7 +125,7 @@ const AdminScreen = () => {
         operationsData = await responseOps.json();
       }
       // Se obtienen las transacciones (income y expense) desde el endpoint de transactions.
-      const urlTransactions = 'http://192.168.56.1:8080/transactions';
+      const urlTransactions = `${REACT_APP_API_URL}/transactions`;
       const responseTrans = await fetch(urlTransactions);
       let transactionsData: Transaction[] = [];
       if (responseTrans.ok) {
@@ -206,9 +207,9 @@ const AdminScreen = () => {
       let url = '';
       // Para income y expense se usa el endpoint de transactions; para los demás, el de operaciones.
       if (transactionToDelete.type === 'income' || transactionToDelete.type === 'expense') {
-        url = `http://192.168.56.1:8080/transactions/${transactionToDelete.id}`;
+        url = `${REACT_APP_API_URL}/transactions/${transactionToDelete.id}`;
       } else {
-        url = `http://192.168.56.1:8080/api/operations/${transactionToDelete.type}/${transactionToDelete.id}`;
+        url = `${REACT_APP_API_URL}/api/operations/${transactionToDelete.type}/${transactionToDelete.id}`;
       }
       const response = await fetch(url, { method: 'DELETE' });
       if (response.ok) {
@@ -309,9 +310,9 @@ const AdminScreen = () => {
     try {
       let url = '';
       if (editingTransaction.type === 'income' || editingTransaction.type === 'expense') {
-        url = `http://192.168.56.1:8080/transactions/${editingTransaction.id}`;
+        url = `${REACT_APP_API_URL}/transactions/${editingTransaction.id}`;
       } else {
-        url = `http://192.168.56.1:8080/api/operations/${editingTransaction.type}/${editingTransaction.id}`;
+        url = `${REACT_APP_API_URL}/api/operations/${editingTransaction.type}/${editingTransaction.id}`;
       }
       const response = await fetch(url, {
         method: 'PUT',
