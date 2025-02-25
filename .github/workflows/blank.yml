@@ -3,11 +3,12 @@ name: Deploy Frontend to Docker Hub
 on:
   push:
     branches:
-      - dev  # Ejecuta el workflow cuando hay un push a la rama "main"
+      - dev  # Ejecuta el workflow cuando hay un push a la rama "dev"
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    environment: production  # Asigna el Environment llamado "production"
 
     steps:
       - name: Checkout repository
