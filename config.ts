@@ -1,6 +1,6 @@
 //export const API_KEYCLOAK_ADAPTER_URL = 'http://localhost:8088';
 //export const REACT_APP_API_URL = 'http://192.168.1.3:8080';
 
-export const API_KEYCLOAK_ADAPTER_URL = 'http://157.173.204.202:8088';
+export const API_KEYCLOAK_ADAPTER_URL = 'http://157.173.204.202:8087';
 export const REACT_APP_API_URL = 'http://157.173.204.202:8099';
 
