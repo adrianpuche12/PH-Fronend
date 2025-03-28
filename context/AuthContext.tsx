@@ -102,8 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           password,
           client_id: 'proyecto-h',
         }),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' , 
-          'Origin': 'http://157.173.204.202:8052'
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded'
          }, 
          withCredentials: true
         }
