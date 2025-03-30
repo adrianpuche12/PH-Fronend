@@ -104,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded'
          }, 
-         withCredentials: true
+         withCredentials: false
         }
       );
 
