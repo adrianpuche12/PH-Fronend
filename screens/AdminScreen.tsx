@@ -19,21 +19,23 @@ import { useFocusEffect } from '@react-navigation/native';
 import LogoutButton from '@/components/LogoutButton';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { REACT_APP_API_URL } from '../config';
+import { format, parseISO } from 'date-fns';
 
 // Actualizamos la interfaz para incluir los nuevos tipos
 interface Transaction {
   id: number;
   type: 'CLOSING' | 'SUPPLIER' | 'SALARY' | 'income' | 'expense';
   amount: number;
-  date: string;
+  date?: string;
   description?: string;
   username?: string;
   closingsCount?: number;
   periodStart?: string;
   periodEnd?: string;
   supplier?: string;
+  depositDate?: string;
+  paymentDate?: string;
 }
-
 
 
 const ITEMS_PER_PAGE = 5;
@@ -85,6 +87,8 @@ const AdminScreen = () => {
   // Estados para el modal de edición
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [datePickerEditVisible, setDatePickerEditVisible] = useState(false);
+  const [dateEditField, setDateEditField] = useState<'date' | 'periodStart' | 'periodEnd'>('date');
 
   // Campos para editar
   const [newAmount, setNewAmount] = useState('');
@@ -121,20 +125,44 @@ const AdminScreen = () => {
       }
       const responseOps = await fetch(urlOperations);
       let operationsData: Transaction[] = [];
+      
       if (responseOps.ok) {
         operationsData = await responseOps.json();
+        operationsData = operationsData.map(op => {
+          const newOp = { ...op };
+          
+          if (op.type === 'CLOSING' && op.depositDate) {
+            newOp.date = op.depositDate;
+          } else if (op.type === 'SUPPLIER' && op.paymentDate) {
+            newOp.date = op.paymentDate;
+          } else if (op.type === 'SALARY' && op.depositDate) {
+            newOp.date = op.depositDate;
+          }
+          
+          return newOp;
+        });
       }
-      // Se obtienen las transacciones (income y expense) desde el endpoint de transactions.
+      
       const urlTransactions = `${REACT_APP_API_URL}/transactions`;
       const responseTrans = await fetch(urlTransactions);
       let transactionsData: Transaction[] = [];
+      
       if (responseTrans.ok) {
         transactionsData = await responseTrans.json();
-        // Si hay filtro de fechas, filtramos aquí también las transacciones.
+        
         if (start && end) {
           transactionsData = transactionsData.filter(tx => {
-            const txDate = new Date(tx.date);
-            return txDate >= start && txDate <= end;
+            if (!tx.date) return false;
+            
+            try {
+              const txDate = new Date(tx.date);
+              if (isNaN(txDate.getTime())) return false;
+              
+              return txDate >= start && txDate <= end;
+            } catch (error) {
+              console.warn('Error al procesar fecha:', tx.date, error);
+              return false;
+            }
           });
         }
       }
@@ -169,13 +197,34 @@ const AdminScreen = () => {
       }
     }
   };
+  
+  const onConfirmEditDate = ({ date }: { date: Date | undefined }) => {
+    if (!date) return;
+    
+    const formattedDate = format(date, 'yyyy-MM-dd');
+    
+    if (dateEditField === 'date') {
+      setNewDate(formattedDate);
+    } else if (dateEditField === 'periodStart') {
+      setNewPeriodStart(formattedDate);
+    } else if (dateEditField === 'periodEnd') {
+      setNewPeriodEnd(formattedDate);
+    }
+    
+    setDatePickerEditVisible(false);
+  };
 
   const formatDate = (date?: Date | string) => {
     if (!date) return '';
-    if (typeof date === 'string') {
-      return new Date(date).toLocaleDateString();
+    try {
+      if (typeof date === 'string') {
+        return format(parseISO(date), 'yyyy-MM-dd');
+      }
+      return format(date, 'yyyy-MM-dd');
+    } catch (error) {
+      console.error('Error al formatear la fecha:', error, date);
+      return String(date);
     }
-    return date.toLocaleDateString();
   };
 
   // Paginación
@@ -233,7 +282,17 @@ const AdminScreen = () => {
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setNewAmount(transaction.amount.toString());
-    setNewDate(transaction.date);
+    
+    let dateValue = '';
+    if (transaction.type === 'CLOSING' || transaction.type === 'SALARY') {
+      dateValue = transaction.date || '';
+    } else if (transaction.type === 'SUPPLIER') {
+      dateValue = transaction.date || '';
+    } else {
+      dateValue = transaction.date || '';
+    }
+    
+    setNewDate(dateValue);
     setNewDescription(transaction.description ?? '');
     setNewUsername(transaction.username ?? '');
     setNewClosingsCount(
@@ -253,10 +312,8 @@ const AdminScreen = () => {
       return;
     }
     let updatedTransaction: any = {};
-    // Para income y expense se consideran solo amount, date y description.
     switch (editingTransaction.type) {
       case 'CLOSING': {
-        const parsedClosingsCount = parseInt(newClosingsCount, 10);
         updatedTransaction = {
           amount: parsedAmount,
           depositDate: newDate,
@@ -290,7 +347,6 @@ const AdminScreen = () => {
       }
       case 'income':
       case 'expense': {
-        // Se agrega la propiedad type para que el backend sepa qué tipo es.
         updatedTransaction = {
           type: editingTransaction.type,
           amount: parsedAmount,
@@ -307,6 +363,7 @@ const AdminScreen = () => {
         };
       }
     }
+    
     try {
       let url = '';
       if (editingTransaction.type === 'income' || editingTransaction.type === 'expense') {
@@ -328,7 +385,9 @@ const AdminScreen = () => {
         setEditingTransaction(null);
         fetchData(startDate, endDate);
       } else {
-        Alert.alert('Error', 'No se pudo actualizar la transacción.');
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.message || 'No se pudo actualizar la transacción.';
+        Alert.alert('Error', errorMessage);
       }
     } catch (error) {
       console.error('Error al actualizar la transacción:', error);
@@ -358,20 +417,44 @@ const AdminScreen = () => {
             <TextInput
               label="Fecha de Depósito"
               value={newDate}
-              onChangeText={setNewDate}
               style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
             />
             <TextInput
               label="Periodo Desde"
               value={newPeriodStart}
-              onChangeText={setNewPeriodStart}
               style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('periodStart');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('periodStart');
+                setDatePickerEditVisible(true);
+              }} />}
             />
             <TextInput
               label="Periodo Hasta"
               value={newPeriodEnd}
-              onChangeText={setNewPeriodEnd}
               style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('periodEnd');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('periodEnd');
+                setDatePickerEditVisible(true);
+              }} />}
             />
             <TextInput
               label="Usuario"
@@ -394,8 +477,16 @@ const AdminScreen = () => {
             <TextInput
               label="Fecha de Pago"
               value={newDate}
-              onChangeText={setNewDate}
               style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
             />
             <TextInput
               label="Proveedor"
@@ -424,8 +515,16 @@ const AdminScreen = () => {
             <TextInput
               label="Fecha de Depósito"
               value={newDate}
-              onChangeText={setNewDate}
               style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
             />
             <TextInput
               label="Descripción"
@@ -455,8 +554,16 @@ const AdminScreen = () => {
             <TextInput
               label="Fecha"
               value={newDate}
-              onChangeText={setNewDate}
               style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
             />
             <TextInput
               label="Descripción"
@@ -479,8 +586,16 @@ const AdminScreen = () => {
             <TextInput
               label="Fecha"
               value={newDate}
-              onChangeText={setNewDate}
               style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
             />
             <TextInput
               label="Descripción"
@@ -494,52 +609,66 @@ const AdminScreen = () => {
   };
 
   // Render de cada tarjeta de operación (se omite el ID)
-  const renderTransaction = (item: Transaction, index: number) => (
-    <View key={`transaction-${item.id}-${index}`} style={styles.card}>
-      <ThemedText style={styles.cardText}>{'Tipo: ' + item.type}</ThemedText>
-      <ThemedText style={styles.cardText}>{'Fecha: ' + formatDate(item.date)}</ThemedText>
-      <ThemedText style={styles.cardText}>{'Monto: $' + item.amount}</ThemedText>
-      {item.description && (
-        <ThemedText style={styles.cardText}>{'Descripción: ' + item.description}</ThemedText>
-      )}
-      {item.username && (
-        <ThemedText style={styles.cardText}>{'Usuario: ' + item.username}</ThemedText>
-      )}
-      {item.type === 'CLOSING' && (
-        <>
-          {item.closingsCount !== undefined && (
-            <ThemedText style={styles.cardText}>
-              {'Cantidad de cierres: ' + item.closingsCount}
-            </ThemedText>
-          )}
-          {item.periodStart && (
-            <ThemedText style={styles.cardText}>
-              {'Periodo desde: ' + formatDate(item.periodStart)}
-            </ThemedText>
-          )}
-          {item.periodEnd && (
-            <ThemedText style={styles.cardText}>
-              {'Periodo hasta: ' + formatDate(item.periodEnd)}
-            </ThemedText>
-          )}
-        </>
-      )}
-      {item.type === 'SUPPLIER' && item.supplier && (
-        <ThemedText style={styles.cardText}>{'Proveedor: ' + item.supplier}</ThemedText>
-      )}
-      {item.type === 'SALARY' && item.username && (
-        <ThemedText style={styles.cardText}>{'Empleado: ' + item.username}</ThemedText>
-      )}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={() => handleEdit(item)} style={styles.editButton}>
-          <Text style={styles.buttonText}>Editar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteButton}>
-          <Text style={styles.buttonText}>Eliminar</Text>
-        </TouchableOpacity>
+  const renderTransaction = (item: Transaction, index: number) => {
+    let dateToShow = item.date;
+    
+    if (item.type === 'CLOSING' && item.depositDate) {
+      dateToShow = item.depositDate;
+    } else if (item.type === 'SUPPLIER' && item.paymentDate) {
+      dateToShow = item.paymentDate;
+    } else if (item.type === 'SALARY' && item.depositDate) {
+      dateToShow = item.depositDate;
+    }
+    
+    return (
+      <View key={`transaction-${item.id}-${index}`} style={styles.card}>
+        <ThemedText style={styles.cardText}>{'Tipo: ' + item.type}</ThemedText>
+        {dateToShow && (
+          <ThemedText style={styles.cardText}>{'Fecha: ' + formatDate(dateToShow)}</ThemedText>
+        )}
+        <ThemedText style={styles.cardText}>{'Monto: $' + item.amount}</ThemedText>
+        {item.description && (
+          <ThemedText style={styles.cardText}>{'Descripción: ' + item.description}</ThemedText>
+        )}
+        {item.username && (
+          <ThemedText style={styles.cardText}>{'Usuario: ' + item.username}</ThemedText>
+        )}
+        {item.type === 'CLOSING' && (
+          <>
+            {item.closingsCount !== undefined && (
+              <ThemedText style={styles.cardText}>
+                {'Cantidad de cierres: ' + item.closingsCount}
+              </ThemedText>
+            )}
+            {item.periodStart && (
+              <ThemedText style={styles.cardText}>
+                {'Periodo desde: ' + formatDate(item.periodStart)}
+              </ThemedText>
+            )}
+            {item.periodEnd && (
+              <ThemedText style={styles.cardText}>
+                {'Periodo hasta: ' + formatDate(item.periodEnd)}
+              </ThemedText>
+            )}
+          </>
+        )}
+        {item.type === 'SUPPLIER' && item.supplier && (
+          <ThemedText style={styles.cardText}>{'Proveedor: ' + item.supplier}</ThemedText>
+        )}
+        {item.type === 'SALARY' && item.username && (
+          <ThemedText style={styles.cardText}>{'Empleado: ' + item.username}</ThemedText>
+        )}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity onPress={() => handleEdit(item)} style={styles.editButton}>
+            <Text style={styles.buttonText}>Editar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleDelete(item)} style={styles.deleteButton}>
+            <Text style={styles.buttonText}>Eliminar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderPagination = () => (
     <View style={styles.paginationContainer}>
@@ -730,6 +859,28 @@ const AdminScreen = () => {
       >
         {snackbarMessage}
       </Snackbar>
+      <DatePickerModal
+        locale="es"
+        mode="single"
+        visible={datePickerEditVisible}
+        onDismiss={() => setDatePickerEditVisible(false)}
+        date={(() => {
+          try {
+            if (dateEditField === 'date' && newDate) {
+              return parseISO(newDate);
+            } else if (dateEditField === 'periodStart' && newPeriodStart) {
+              return parseISO(newPeriodStart);
+            } else if (dateEditField === 'periodEnd' && newPeriodEnd) {
+              return parseISO(newPeriodEnd);
+            }
+            return new Date();
+          } catch (error) {
+            console.error('Error parsing date:', error);
+            return new Date();
+          }
+        })()}
+        onConfirm={onConfirmEditDate}
+      />
     </ThemedView>
   );
 };
