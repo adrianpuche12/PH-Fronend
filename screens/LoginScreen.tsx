@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Card, Title, HelperText } from 'react-native-paper';
+import { TextInput, Button, Card, Title, HelperText, Avatar } from 'react-native-paper';
 import { router } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,7 +9,7 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const { login } = useAuth();
 
   const handleLogin = async () => {
@@ -42,8 +42,16 @@ const LoginScreen = () => {
     >
       <Card style={styles.card}>
         <Card.Content>
+
+          <View style={styles.logoContainer}>
+            <Avatar.Image
+              size={120}
+              source={require('../assets/images/logo_proyecto_Humberto.jpg')}
+              style={styles.logo}
+            />
+          </View>
           <Title style={styles.title}>Iniciar Sesión</Title>
-          
+
           <TextInput
             label="Usuario"
             value={username}
@@ -93,6 +101,15 @@ const styles = StyleSheet.create({
   card: {
     elevation: 4,
     borderRadius: 8,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  logo: {
+    width: 120,
+    height: 120,
   },
   title: {
     fontSize: 24,
