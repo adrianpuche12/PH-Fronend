@@ -614,7 +614,7 @@ const AdminScreen = () => {
   // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
     let dateToShow = item.date;
-    
+
     if (item.type === 'CLOSING' && item.depositDate) {
       dateToShow = item.depositDate;
     } else if (item.type === 'SUPPLIER' && item.paymentDate) {
@@ -622,10 +622,10 @@ const AdminScreen = () => {
     } else if (item.type === 'SALARY' && item.depositDate) {
       dateToShow = item.depositDate;
     }
-  
+
     let typeIcon, typeColor;
-    
-    switch(item.type) {
+
+    switch (item.type) {
       case 'CLOSING':
       case 'income':
         typeIcon = 'arrow-down-bold-circle-outline';
@@ -641,7 +641,7 @@ const AdminScreen = () => {
         typeIcon = 'help-circle-outline';
         typeColor = '#9E9E9E';
     }
-    
+
     return (
       <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
         <Card.Content>
@@ -656,7 +656,7 @@ const AdminScreen = () => {
               {'$' + item.amount.toFixed(2)}
             </Text>
           </View>
-          
+
           <View style={styles.transactionDetails}>
             {dateToShow && (
               <View style={styles.detailRow}>
@@ -664,25 +664,25 @@ const AdminScreen = () => {
                 <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
               </View>
             )}
-            
+
             {item.description && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
                 <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
               </View>
             )}
-            
+
             {item.username && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="account" size={16} color="#8B7214" />
                 <Text style={styles.detailText}>{'Usuario: ' + item.username}</Text>
               </View>
             )}
-            
+
             {/* Campos específicos por tipo */}
             {/* ... mantener los campos específicos por tipo como en el código original ... */}
           </View>
-          
+
           <View style={styles.buttonContainer}>
             <Button
               mode="contained"
@@ -707,7 +707,7 @@ const AdminScreen = () => {
       </Card>
     );
   };
-  
+
   // 7. Modificar los botones de paginación
   // Reemplazar el renderPagination con este diseño:
 
@@ -718,10 +718,10 @@ const AdminScreen = () => {
         disabled={currentPage === 1}
         style={[styles.paginationButton, currentPage === 1 && styles.disabledButton]}
       >
-        <MaterialCommunityIcons 
-          name="chevron-left" 
-          size={24} 
-          color={currentPage === 1 ? '#BBBBBB' : '#2196F3'} 
+        <MaterialCommunityIcons
+          name="chevron-left"
+          size={24}
+          color={currentPage === 1 ? '#BBBBBB' : '#2196F3'}
         />
       </TouchableOpacity>
       {pageNumbers.map((page) => (
@@ -740,10 +740,10 @@ const AdminScreen = () => {
         disabled={currentPage === totalPages}
         style={[styles.paginationButton, currentPage === totalPages && styles.disabledButton]}
       >
-        <MaterialCommunityIcons 
-          name="chevron-right" 
-          size={24} 
-          color={currentPage === totalPages ? '#BBBBBB' : '#2196F3'} 
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={24}
+          color={currentPage === totalPages ? '#BBBBBB' : '#2196F3'}
         />
       </TouchableOpacity>
     </View>
@@ -809,18 +809,27 @@ const AdminScreen = () => {
           />
           {(startDate || endDate) && (
             <Button
-            mode="outlined"
-            onPress={() => {
-              setStartDate(undefined);
-              setEndDate(undefined);
-            }}
-            style={styles.clearButton}
-            color="#D4A72B"
-          >
-            Limpiar
-          </Button>
-          
+              mode="outlined"
+              onPress={() => {
+                setStartDate(undefined);
+                setEndDate(undefined);
+              }}
+              style={styles.clearButton}
+              color="#D4A72B"
+            >
+              Limpiar
+            </Button>
+
           )}
+          <Button
+            mode="contained"
+            onPress={() => fetchData(startDate, endDate)}
+            style={styles.refreshButton}
+            icon="refresh"
+            buttonColor="#2196F3"
+          >
+            Actualizar
+          </Button>
         </View>
         {isLargeScreen && <BalanceCard transactions={transactions} />}
       </View>
@@ -950,6 +959,12 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 0,
     backgroundColor: '#F5F5F5',
+  },
+  refreshButton: {
+    borderRadius: 30,
+    marginTop: 5,
+    marginBottom: 10,
+    elevation: 2,
   },
   topSection: {
     backgroundColor: '#FFF0A8',
