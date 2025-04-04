@@ -490,24 +490,24 @@ export default DynamicFormScreen;
 */
 
 import React, { useState } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  ScrollView, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Animated, 
-  Image, 
-  Text, 
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Image,
+  Text,
   useWindowDimensions,
   StatusBar
 } from 'react-native';
-import { 
-  TextInput, 
-  Button, 
-  RadioButton, 
-  Card, 
-  Title, 
+import {
+  TextInput,
+  Button,
+  RadioButton,
+  Card,
+  Title,
   Snackbar,
   Avatar,
   HelperText
@@ -613,7 +613,7 @@ const DynamicFormScreen = () => {
 
   const validateForm = () => {
     const newErrors: { [key: string]: boolean } = {};
-    
+
     if (formType === 'transaction') {
       if (!formData.amount) newErrors.amount = true;
       if (!formData.date) newErrors.date = true;
@@ -632,7 +632,7 @@ const DynamicFormScreen = () => {
       if (!formData.username) newErrors.username = true;
       if (!formData.description) newErrors.description = true;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -714,16 +714,16 @@ const DynamicFormScreen = () => {
         value={formData.type}
       >
         <View style={styles.radioGroupContainer}>
-          <RadioButton.Item 
-            label="Ingreso" 
-            value="income" 
+          <RadioButton.Item
+            label="Ingreso"
+            value="income"
             style={styles.radioItem}
             labelStyle={styles.radioLabel}
             color="#D4A72B"
           />
-          <RadioButton.Item 
-            label="Egreso" 
-            value="expense" 
+          <RadioButton.Item
+            label="Egreso"
+            value="expense"
             style={styles.radioItem}
             labelStyle={styles.radioLabel}
             color="#D4A72B"
@@ -963,53 +963,53 @@ const DynamicFormScreen = () => {
       style={styles.container}
     >
       <StatusBar barStyle="dark-content" backgroundColor="#FFF0A8" />
-      
+
       <View style={styles.topSection}>
         <View style={styles.logoContainer}>
           <Avatar.Image
-            size={120}
+            size={100}
             source={require('@/assets/images/logo_proyecto_Humberto.jpg')}
             style={styles.logo}
           />
         </View>
-        <Title style={styles.welcomeText}>Operaciones</Title>
+        <Title style={styles.welcomeText}>Administración de Operaciones</Title>
       </View>
-      
+
       <ScrollView style={styles.scrollView}>
         <Card style={styles.card}>
           <Card.Content>
             <Title style={styles.cardTitle}>Formulario de Operaciones</Title>
-            
+
             <Title style={styles.formSectionTitle}>Seleccione tipo de operación</Title>
             <RadioButton.Group
               onValueChange={(value: any) => setFormType(value)}
               value={formType}
             >
               <View style={styles.operationTypeContainer}>
-                <RadioButton.Item 
-                  label="Transacción" 
-                  value="transaction" 
+                <RadioButton.Item
+                  label="Transacción"
+                  value="transaction"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
                   color="#D4A72B"
                 />
-                <RadioButton.Item 
-                  label="Depósito de Cierres" 
-                  value="closing-deposits" 
+                <RadioButton.Item
+                  label="Depósito de Cierres"
+                  value="closing-deposits"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
                   color="#D4A72B"
                 />
-                <RadioButton.Item 
-                  label="Pago a Proveedores" 
-                  value="supplier-payments" 
+                <RadioButton.Item
+                  label="Pago a Proveedores"
+                  value="supplier-payments"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
                   color="#D4A72B"
                 />
-                <RadioButton.Item 
-                  label="Salarios" 
-                  value="salary-payments" 
+                <RadioButton.Item
+                  label="Salarios"
+                  value="salary-payments"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
                   color="#D4A72B"
@@ -1018,7 +1018,7 @@ const DynamicFormScreen = () => {
             </RadioButton.Group>
 
             {renderFormFields()}
-            
+
             <View style={styles.buttonContainer}>
               <Button
                 mode="contained"
@@ -1030,7 +1030,7 @@ const DynamicFormScreen = () => {
               >
                 ENVIAR
               </Button>
-              
+
               <Button
                 mode="contained"
                 onPress={clearData}
