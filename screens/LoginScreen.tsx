@@ -255,7 +255,7 @@ const LoginScreen = () => {
             loading={isLoading}
             disabled={isLoading}
             labelStyle={styles.buttonText}
-            color="#2196F3" // Standard blue button color
+            buttonColor="#2196F3" // Standard blue button color
           >
             {isLoading ? 'INICIANDO SESIÓN...' : 'INICIAR SESIÓN'}
           </Button>
