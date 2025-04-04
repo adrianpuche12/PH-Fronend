@@ -56,7 +56,7 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ transactions }) => {
             />
             <Text style={styles.label}>Ingresos</Text>
             <Text style={styles.incomeValue}>
-            Lps{balance.incomes.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${balance.incomes.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
 
@@ -69,7 +69,7 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ transactions }) => {
             />
             <Text style={styles.label}>Egresos</Text>
             <Text style={styles.expenseValue}>
-            Lps{balance.expenses.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${balance.expenses.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
 
@@ -85,7 +85,7 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ transactions }) => {
               styles.totalValue,
               { color: balance.total >= 0 ? "#4CAF50" : "#f44336" }
             ]}>
-              Lps{balance.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${balance.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
         </View>
