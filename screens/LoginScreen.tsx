@@ -135,10 +135,7 @@ import {
   StyleSheet, 
   KeyboardAvoidingView, 
   Platform, 
-  ImageBackground,
-  StatusBar,
-  TouchableOpacity,
-  Text
+  StatusBar
 } from 'react-native';
 import { 
   TextInput, 
@@ -146,7 +143,6 @@ import {
   Card, 
   Title, 
   HelperText, 
-  IconButton,
   Avatar
 } from 'react-native-paper';
 import { router } from 'expo-router';
@@ -191,7 +187,7 @@ const LoginScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#005DA8" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF0A8" />
       
       <View style={styles.topSection}>
         <View style={styles.logoContainer}>
@@ -216,10 +212,10 @@ const LoginScreen = () => {
               mode="outlined"
               style={styles.input}
               autoCapitalize="none"
-              left={<TextInput.Icon icon="account" color="#005DA8" />}
+              left={<TextInput.Icon icon="account" color="#D4A72B" />}
               outlineColor="#DDDDDD"
-              activeOutlineColor="#005DA8"
-              theme={{ colors: { primary: '#005DA8' } }}
+              activeOutlineColor="#D4A72B"
+              theme={{ colors: { primary: '#D4A72B' } }}
             />
           </View>
 
@@ -231,17 +227,17 @@ const LoginScreen = () => {
               secureTextEntry={secureTextEntry}
               mode="outlined"
               style={styles.input}
-              left={<TextInput.Icon icon="lock" color="#005DA8" />}
+              left={<TextInput.Icon icon="lock" color="#D4A72B" />}
               right={
                 <TextInput.Icon 
                   icon={secureTextEntry ? "eye" : "eye-off"} 
                   onPress={toggleSecureEntry}
-                  color="#005DA8"
+                  color="#D4A72B"
                 />
               }
               outlineColor="#DDDDDD"
-              activeOutlineColor="#005DA8"
-              theme={{ colors: { primary: '#005DA8' } }}
+              activeOutlineColor="#D4A72B"
+              theme={{ colors: { primary: '#D4A72B' } }}
             />
           </View>
 
@@ -259,20 +255,12 @@ const LoginScreen = () => {
             loading={isLoading}
             disabled={isLoading}
             labelStyle={styles.buttonText}
-            color="#005DA8"
+            color="#2196F3" // Standard blue button color
           >
             {isLoading ? 'INICIANDO SESIÓN...' : 'INICIAR SESIÓN'}
           </Button>
-          
-          <TouchableOpacity style={styles.forgotPasswordContainer}>
-            <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
-          </TouchableOpacity>
         </Card.Content>
       </Card>
-      
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Proyecto Humberto © 2025</Text>
-      </View>
     </View>
   );
 };
@@ -283,7 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   topSection: {
-    backgroundColor: '#005DA8',
+    backgroundColor: '#FFF0A8', // Soft yellow background
     paddingVertical: 40,
     alignItems: 'center',
     borderBottomLeftRadius: 30,
@@ -305,7 +293,7 @@ const styles = StyleSheet.create({
     borderColor: 'white',
   },
   welcomeText: {
-    color: 'white',
+    color: '#8B7214', // Darker yellow/gold for contrast on light yellow
     fontSize: 28,
     fontWeight: 'bold',
     marginTop: 10,
@@ -346,26 +334,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  forgotPasswordContainer: {
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  forgotPasswordText: {
-    color: '#005DA8',
-    fontSize: 14,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  footerText: {
-    color: '#777',
-    fontSize: 12,
   }
 });
 
