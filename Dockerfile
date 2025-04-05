@@ -9,18 +9,17 @@ RUN npm ci --only=production
 # Copia el resto del código fuente
 COPY . .
 
-# Construye la aplicación (verifica que este comando genere la carpeta "build")
-RUN npm run build && ls -l /app
-
-# Comando de depuración: lista el contenido de /app para confirmar que se creó la carpeta "build"
-RUN ls -la /app
+# Construye la aplicación
+RUN npm run build
 
 # Etapa 2: Producción con Nginx
 FROM nginx:alpine
 
-# Copia la carpeta generada en la etapa de build a la ubicación de Nginx
-# Nota: si tu build genera los archivos en una carpeta distinta (por ejemplo, "dist"), cambia "/app/build" por "/app/dist"
+# Copia los archivos de la aplicación compilada
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copia la configuración de Nginx (corrige la ruta a tu archivo local)
+COPY ./nginx/default.conf /etc/nginx/conf.d/default.conf
 
 # Expone el puerto 80
 EXPOSE 80
