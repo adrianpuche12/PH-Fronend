@@ -542,7 +542,16 @@ const DynamicFormScreen = () => {
   });
 
   const [datePickerVisible, setDatePickerVisible] = useState(false);
-  const [selectedDateField, setSelectedDateField] = useState<'date' | 'periodStart' | 'periodEnd' | ''>('');
+  const [dateRangePickerVisible, setDateRangePickerVisible] = useState(false);
+  const [selectedDateField, setSelectedDateField] = useState<'date' | ''>('');
+  const [dateRange, setDateRange] = useState<{
+    startDate: Date | undefined,
+    endDate: Date | undefined,
+  }>({
+    startDate: undefined,
+    endDate: undefined,
+  });
+
   const [showMessageCard, setShowMessageCard] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
@@ -581,6 +590,10 @@ const DynamicFormScreen = () => {
     handleInputChange('periodEnd', '');
     handleInputChange('username', '');
     handleInputChange('supplier', '');
+    setDateRange({
+      startDate: undefined,
+      endDate: undefined,
+    });
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -598,6 +611,7 @@ const DynamicFormScreen = () => {
     setErrors((prevErrors) => ({ ...prevErrors, [field]: false }));
   };
 
+  // Manejador para fecha única (transacciones normales)
   const handleDateConfirm = (params: { date: Date | undefined }) => {
     if (params.date) {
       const formattedDate = format(params.date, 'yyyy-MM-dd');
@@ -609,6 +623,37 @@ const DynamicFormScreen = () => {
     }
     setDatePickerVisible(false);
     setSelectedDateField('');
+  };
+
+  // Manejador para rango de fechas (depósitos de cierre)
+  const handleDateRangeConfirm = ({ 
+    startDate, 
+    endDate 
+  }: { 
+    startDate: Date | undefined, 
+    endDate: Date | undefined 
+  }) => {
+    setDateRange({ startDate, endDate });
+    
+    if (startDate) {
+      const formattedStartDate = format(startDate, 'yyyy-MM-dd');
+      setFormData((prevData: any) => ({
+        ...prevData,
+        periodStart: formattedStartDate,
+      }));
+      setErrors((prevErrors) => ({ ...prevErrors, periodStart: false }));
+    }
+    
+    if (endDate) {
+      const formattedEndDate = format(endDate, 'yyyy-MM-dd');
+      setFormData((prevData: any) => ({
+        ...prevData,
+        periodEnd: formattedEndDate,
+      }));
+      setErrors((prevErrors) => ({ ...prevErrors, periodEnd: false }));
+    }
+    
+    setDateRangePickerVisible(false);
   };
 
   const validateForm = () => {
@@ -677,6 +722,10 @@ const DynamicFormScreen = () => {
         });
         setFormType('');
         setErrors({});
+        setDateRange({
+          startDate: undefined,
+          endDate: undefined,
+        });
       } else {
         const error = await response.json();
         showMessage('error', error.message || 'Error al enviar el formulario');
@@ -818,40 +867,32 @@ const DynamicFormScreen = () => {
                 theme={{ colors: { primary: '#D4A72B' } }}
               />
             </View>
+            
+            {/* Selector de rango de fechas unificado */}
             <View style={styles.inputContainer}>
               <TextInput
-                label="Fecha Desde"
-                value={formData.periodStart}
+                label="Periodo (Desde - Hasta)"
+                value={formData.periodStart && formData.periodEnd ? 
+                  `${formData.periodStart} - ${formData.periodEnd}` : 
+                  ''}
                 mode="outlined"
                 onFocus={() => {
-                  setSelectedDateField('periodStart');
-                  setDatePickerVisible(true);
+                  setDateRangePickerVisible(true);
                 }}
                 style={styles.input}
-                error={errors.periodStart}
-                left={<TextInput.Icon icon="calendar-start" color="#D4A72B" />}
+                error={errors.periodStart || errors.periodEnd}
+                left={<TextInput.Icon icon="calendar-range" color="#D4A72B" />}
                 outlineColor="#DDDDDD"
                 activeOutlineColor="#D4A72B"
                 theme={{ colors: { primary: '#D4A72B' } }}
               />
+              {(errors.periodStart || errors.periodEnd) && (
+                <HelperText type="error" visible={true}>
+                  Debe seleccionar el periodo completo
+                </HelperText>
+              )}
             </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                label="Fecha Hasta"
-                value={formData.periodEnd}
-                mode="outlined"
-                onFocus={() => {
-                  setSelectedDateField('periodEnd');
-                  setDatePickerVisible(true);
-                }}
-                style={styles.input}
-                error={errors.periodEnd}
-                left={<TextInput.Icon icon="calendar-end" color="#D4A72B" />}
-                outlineColor="#DDDDDD"
-                activeOutlineColor="#D4A72B"
-                theme={{ colors: { primary: '#D4A72B' } }}
-              />
-            </View>
+            
             <View style={styles.inputContainer}>
               <TextInput
                 label="Usuario"
@@ -1046,12 +1087,25 @@ const DynamicFormScreen = () => {
         </Card>
       </ScrollView>
 
+      {/* Selector de fecha individual (para transacciones) */}
       <DatePickerModal
         mode="single"
         visible={datePickerVisible}
         onDismiss={() => setDatePickerVisible(false)}
         onConfirm={handleDateConfirm}
         locale="es"
+        date={undefined}
+      />
+
+      {/* Selector de rango de fechas (para depósitos de cierres) */}
+      <DatePickerModal
+        mode="range"
+        visible={dateRangePickerVisible}
+        onDismiss={() => setDateRangePickerVisible(false)}
+        onConfirm={handleDateRangeConfirm}
+        locale="es"
+        startDate={dateRange.startDate}
+        endDate={dateRange.endDate}
       />
 
       {showMessageCard && (
