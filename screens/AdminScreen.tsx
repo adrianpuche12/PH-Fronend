@@ -61,17 +61,17 @@ const BalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color="#4CAF50" />
           <Text style={styles.balanceLabel}>Ingresos:</Text>
-          <Text style={styles.balanceValue}>{'$' + ingresos.toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>{'L' + ingresos.toFixed(2)}</Text>
         </View>
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color="#F44336" />
           <Text style={styles.balanceLabel}>Egresos:</Text>
-          <Text style={styles.balanceValue}>{'$' + egresos.toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>{'L' + egresos.toFixed(2)}</Text>
         </View>
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="calculator-variant" size={20} color="#2196F3" />
           <Text style={styles.balanceLabel}>Total:</Text>
-          <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{'$' + total.toFixed(2)}</Text>
+          <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{'L' + total.toFixed(2)}</Text>
         </View>
       </Card.Content>
     </Card>
@@ -122,8 +122,8 @@ const AdminScreen = () => {
       // Se obtienen las operaciones desde el endpoint de operaciones.
       let urlOperations = `${REACT_APP_API_URL}/api/operations/all`;
       if (start && end) {
-        const startStr = start.toISOString().split('T')[0];
-        const endStr = end.toISOString().split('T')[0];
+        const startStr = format(start, 'yyyy-MM-dd'); 
+        const endStr = format(end, 'yyyy-MM-dd');
         urlOperations += `?startDate=${startStr}&endDate=${endStr}`;
       }
       const responseOps = await fetch(urlOperations);
@@ -154,14 +154,18 @@ const AdminScreen = () => {
         transactionsData = await responseTrans.json();
 
         if (start && end) {
+          const startDateStr = format(start, 'yyyy-MM-dd');
+          const endDateStr = format(end, 'yyyy-MM-dd');
+
           transactionsData = transactionsData.filter(tx => {
             if (!tx.date) return false;
 
             try {
-              const txDate = new Date(tx.date);
-              if (isNaN(txDate.getTime())) return false;
+              const txDateStr = typeof tx.date === 'string' 
+                ? tx.date.split('T')[0]
+                : format(new Date(tx.date), 'yyyy-MM-dd');
 
-              return txDate >= start && txDate <= end;
+              return txDateStr >= startDateStr && txDateStr <= endDateStr;
             } catch (error) {
               console.warn('Error al procesar fecha:', tx.date, error);
               return false;
@@ -653,7 +657,7 @@ const AdminScreen = () => {
               </Text>
             </View>
             <Text style={styles.transactionAmount}>
-              {'$' + item.amount.toFixed(2)}
+              {'L' + item.amount.toFixed(2)}
             </Text>
           </View>
 
