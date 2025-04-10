@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,13 @@ import {
   Alert,
   Modal,
   type ViewStyle,
+  Animated,
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Title } from 'react-native-paper';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { Button, TextInput, Snackbar } from 'react-native-paper';
+import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { useFocusEffect } from '@react-navigation/native';
 import LogoutButton from '@/components/LogoutButton';
@@ -42,8 +43,71 @@ interface Transaction {
 
 const ITEMS_PER_PAGE = 5;
 
+const CollapsibleBalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
+  const [isCollapsed, setIsCollapsed] = useState(true); 
+  const animatedHeight = useRef(new Animated.Value(0)).current;
 
+  React.useEffect(() => {
+    Animated.timing(animatedHeight, {
+      toValue: isCollapsed ? 0 : 1,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isCollapsed]);
 
+  const ingresos = transactions
+    .filter(tx => tx.type === 'CLOSING' || tx.type === 'income')
+    .reduce((sum, tx) => sum + tx.amount, 0);
+  const egresos = transactions
+    .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'expense')
+    .reduce((sum, tx) => sum + tx.amount, 0);
+  const total = ingresos - egresos;
+
+  const balanceContainerHeight = animatedHeight.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 160]
+  });
+
+  return (
+    <Card style={styles.balanceCard}>
+      <TouchableOpacity 
+        style={styles.balanceHeaderContainer} 
+        onPress={() => setIsCollapsed(!isCollapsed)}
+      >
+        <Title style={styles.balanceTitle}>Balance General</Title>
+        <IconButton
+          icon={isCollapsed ? "chevron-down" : "chevron-up"}
+          size={24}
+          onPress={() => setIsCollapsed(!isCollapsed)}
+        />
+      </TouchableOpacity>
+      
+      <Animated.View style={[
+        styles.balanceContentContainer, 
+        { 
+          height: balanceContainerHeight,
+          opacity: animatedHeight
+        }
+      ]}>
+        <View style={styles.balanceRow}>
+          <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color="#4CAF50" />
+          <Text style={styles.balanceLabel}>Ingresos:</Text>
+          <Text style={styles.balanceValue}>{'L' + ingresos.toFixed(2)}</Text>
+        </View>
+        <View style={styles.balanceRow}>
+          <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color="#F44336" />
+          <Text style={styles.balanceLabel}>Egresos:</Text>
+          <Text style={styles.balanceValue}>{'L' + egresos.toFixed(2)}</Text>
+        </View>
+        <View style={styles.balanceRow}>
+          <MaterialCommunityIcons name="calculator-variant" size={20} color="#2196F3" />
+          <Text style={styles.balanceLabel}>Total:</Text>
+          <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{'L' + total.toFixed(2)}</Text>
+        </View>
+      </Animated.View>
+    </Card>
+  );
+};
 
 const BalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
   const ingresos = transactions
@@ -75,6 +139,100 @@ const BalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
         </View>
       </Card.Content>
     </Card>
+  );
+};
+
+const CompactDateFilters = ({ 
+  startDate, 
+  endDate, 
+  setStartDate, 
+  setEndDate, 
+  fetchData,
+  setDatePickerOpen,
+  setSelectedDateInput
+}: { 
+  startDate?: Date; 
+  endDate?: Date; 
+  setStartDate: (date?: Date) => void; 
+  setEndDate: (date?: Date) => void; 
+  fetchData: (start?: Date, end?: Date) => void;
+  setDatePickerOpen: (open: boolean) => void;
+  setSelectedDateInput: (input: 'start' | 'end') => void;
+}) => {
+  const formatDate = (date?: Date | string) => {
+    if (!date) return '';
+    try {
+      if (typeof date === 'string') {
+        return format(parseISO(date), 'yyyy-MM-dd');
+      }
+      return format(date, 'yyyy-MM-dd');
+    } catch (error) {
+      console.error('Error al formatear la fecha:', error, date);
+      return String(date);
+    }
+  };
+
+  return (
+    <View style={styles.compactFiltersContainer}>
+      <View style={styles.compactDateInputs}>
+        <TextInput
+          label="Desde"
+          value={formatDate(startDate)}
+          mode="outlined"
+          dense
+          style={styles.compactDateInput}
+          onFocus={() => {
+            setSelectedDateInput('start');
+            setDatePickerOpen(true);
+          }}
+          left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
+          outlineColor="#DDDDDD"
+          activeOutlineColor="#D4A72B"
+          theme={{ colors: { primary: '#D4A72B' } }}
+        />
+        <TextInput
+          label="Hasta"
+          value={formatDate(endDate)}
+          mode="outlined"
+          dense
+          style={styles.compactDateInput}
+          onFocus={() => {
+            setSelectedDateInput('end');
+            setDatePickerOpen(true);
+          }}
+          left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
+          outlineColor="#DDDDDD"
+          activeOutlineColor="#D4A72B"
+          theme={{ colors: { primary: '#D4A72B' } }}
+        />
+      </View>
+      <View style={styles.compactButtonsRow}>
+        {(startDate || endDate) && (
+          <Button
+            mode="outlined"
+            compact
+            onPress={() => {
+              setStartDate(undefined);
+              setEndDate(undefined);
+            }}
+            style={styles.compactClearButton}
+            color="#D4A72B"
+          >
+            Limpiar
+          </Button>
+        )}
+        <Button
+          mode="contained"
+          compact
+          onPress={() => fetchData(startDate, endDate)}
+          style={styles.compactRefreshButton}
+          icon="refresh"
+          buttonColor="#2196F3"
+        >
+          Actualizar
+        </Button>
+      </View>
+    </View>
   );
 };
 
@@ -683,8 +841,21 @@ const AdminScreen = () => {
               </View>
             )}
 
-            {/* Campos específicos por tipo */}
-            {/* ... mantener los campos específicos por tipo como en el código original ... */}
+            {item.supplier && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
+              </View>
+            )}
+
+            {item.periodStart && item.periodEnd && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>
+                  {'Período: ' + formatDate(item.periodStart) + ' - ' + formatDate(item.periodEnd)}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.buttonContainer}>
@@ -779,66 +950,79 @@ const AdminScreen = () => {
       {/* Botón de Logout */}
       <LogoutButton />
 
-      {/* Header con filtros de fecha y balance */}
-      <View style={headerContainerStyle}>
-        <View style={dateInputsContainerStyle}>
-          <TextInput
-            label="Fecha Inicio"
-            value={formatDate(startDate)}
-            mode="outlined"
-            style={styles.dateInput}
-            onFocus={() => {
-              setSelectedDateInput('start');
-              setDatePickerOpen(true);
-            }}
-            left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-            outlineColor="#DDDDDD"
-            activeOutlineColor="#D4A72B"
-            theme={{ colors: { primary: '#D4A72B' } }}
+      {/* Para pantallas móviles, utilizamos componentes compactos */}
+      {!isLargeScreen ? (
+        <View style={styles.mobileControlsContainer}>
+          <CompactDateFilters 
+            startDate={startDate}
+            endDate={endDate}
+            setStartDate={setStartDate}
+            setEndDate={setEndDate}
+            fetchData={fetchData}
+            setDatePickerOpen={setDatePickerOpen}
+            setSelectedDateInput={setSelectedDateInput}
           />
-
-          <TextInput
-            label="Fecha Fin"
-            value={formatDate(endDate)}
-            mode="outlined"
-            style={styles.dateInput}
-            onFocus={() => {
-              setSelectedDateInput('end');
-              setDatePickerOpen(true);
-            }}
-            left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-            outlineColor="#DDDDDD"
-            activeOutlineColor="#D4A72B"
-            theme={{ colors: { primary: '#D4A72B' } }}
-          />
-          {(startDate || endDate) && (
-            <Button
-              mode="outlined"
-              onPress={() => {
-                setStartDate(undefined);
-                setEndDate(undefined);
-              }}
-              style={styles.clearButton}
-              color="#D4A72B"
-            >
-              Limpiar
-            </Button>
-
-          )}
-          <Button
-            mode="contained"
-            onPress={() => fetchData(startDate, endDate)}
-            style={styles.refreshButton}
-            icon="refresh"
-            buttonColor="#2196F3"
-          >
-            Actualizar
-          </Button>
+          <CollapsibleBalanceCard transactions={transactions} />
         </View>
-        {isLargeScreen && <BalanceCard transactions={transactions} />}
-      </View>
+      ) : (
+        // Para pantallas grandes, utilizamos el diseño original
+        <View style={headerContainerStyle}>
+          <View style={dateInputsContainerStyle}>
+            <TextInput
+              label="Fecha Inicio"
+              value={formatDate(startDate)}
+              mode="outlined"
+              style={styles.dateInput}
+              onFocus={() => {
+                setSelectedDateInput('start');
+                setDatePickerOpen(true);
+              }}
+              left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
+              outlineColor="#DDDDDD"
+              activeOutlineColor="#D4A72B"
+              theme={{ colors: { primary: '#D4A72B' } }}
+            />
 
-      {!isLargeScreen && <BalanceCard transactions={transactions} />}
+            <TextInput
+              label="Fecha Fin"
+              value={formatDate(endDate)}
+              mode="outlined"
+              style={styles.dateInput}
+              onFocus={() => {
+                setSelectedDateInput('end');
+                setDatePickerOpen(true);
+              }}
+              left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
+              outlineColor="#DDDDDD"
+              activeOutlineColor="#D4A72B"
+              theme={{ colors: { primary: '#D4A72B' } }}
+            />
+            {(startDate || endDate) && (
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setStartDate(undefined);
+                  setEndDate(undefined);
+                }}
+                style={styles.clearButton}
+                color="#D4A72B"
+              >
+                Limpiar
+              </Button>
+            )}
+            <Button
+              mode="contained"
+              onPress={() => fetchData(startDate, endDate)}
+              style={styles.refreshButton}
+              icon="refresh"
+              buttonColor="#2196F3"
+            >
+              Actualizar
+            </Button>
+          </View>
+          <BalanceCard transactions={transactions} />
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -964,49 +1148,14 @@ const styles = StyleSheet.create({
     padding: 0,
     backgroundColor: '#F5F5F5',
   },
-  refreshButton: {
-    borderRadius: 30,
-    marginTop: 5,
-    marginBottom: 10,
-    elevation: 2,
-  },
-  topSection: {
-    backgroundColor: '#FFF0A8',
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    marginBottom: 20,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  logo: {
-    backgroundColor: 'white',
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  welcomeText: {
-    color: '#8B7214',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginVertical: 16,
+    marginVertical: 12,
     textAlign: 'center',
     color: '#333',
   },
+  // Estilos para la vista de escritorio (originales)
   headerContainer: {
     padding: 16,
     marginTop: -10,
@@ -1022,21 +1171,82 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 12,
   },
+  refreshButton: {
+    borderRadius: 30,
+    marginTop: 5,
+    marginBottom: 10,
+    elevation: 2,
+  },
   clearButton: {
     marginTop: 5,
     borderColor: '#D4A72B',
   },
+  
+  // Estilos para la vista móvil (nuevos, compactos)
+  mobileControlsContainer: {
+    padding: 10,
+    marginBottom: 5,
+  },
+  compactFiltersContainer: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 10,
+    elevation: 3,
+    marginBottom: 10,
+  },
+  compactDateInputs: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  compactDateInput: {
+    flex: 1,
+    marginHorizontal: 4,
+    height: 50,
+    backgroundColor: '#fff',
+  },
+  compactButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  compactClearButton: {
+    flex: 1,
+    marginRight: 5,
+    borderColor: '#D4A72B',
+    height: 36,
+  },
+  compactRefreshButton: {
+    flex: 1,
+    marginLeft: 5,
+    borderRadius: 30,
+    height: 36,
+  },
+  
+  // Estilos para el BalanceCard colapsable
   balanceCard: {
     borderRadius: 10,
-    elevation: 4,
-    marginBottom: 16,
+    elevation: 3,
+    marginBottom: 10,
+    overflow: 'hidden',
     backgroundColor: 'white',
+  },
+  balanceHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#f8f8f8',
+  },
+  balanceContentContainer: {
+    overflow: 'hidden',
+    paddingHorizontal: 16,
   },
   balanceTitle: {
     fontSize: 18,
     color: '#333',
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 5,
     textAlign: 'center',
   },
   balanceRow: {
@@ -1044,6 +1254,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
     paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   balanceLabel: {
     fontSize: 16,
@@ -1056,8 +1267,11 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
+  
+  // Estilos para la lista de transacciones
   scrollView: {
     padding: 16,
+    flex: 1,
   },
   transactionCard: {
     marginBottom: 16,
@@ -1116,6 +1330,8 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     borderRadius: 30,
   },
+  
+  // Estilos para el modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1128,6 +1344,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     elevation: 5,
+    maxHeight: '80%',
   },
   modalTitle: {
     fontSize: 22,
@@ -1150,22 +1367,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     borderRadius: 30,
   },
-  snackbar: {
-    backgroundColor: '#333333',
-    borderRadius: 10,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: '#D4A72B',
-    textAlign: 'center',
-  },
+  
+  // Estilos para la paginación
   fixedPaginationContainer: {
     paddingVertical: 10,
     backgroundColor: '#f5f5f5',
@@ -1205,6 +1408,20 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.5,
   },
+  
+  // Otros estilos
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#D4A72B',
+    textAlign: 'center',
+  },
   noDataText: {
     fontSize: 18,
     textAlign: 'center',
@@ -1217,7 +1434,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#555',
     lineHeight: 24,
-  }
+  },
+  snackbar: {
+    backgroundColor: '#333333',
+    borderRadius: 10,
+  },
 });
 
 export default AdminScreen;
