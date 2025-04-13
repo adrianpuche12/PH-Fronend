@@ -4,26 +4,29 @@ import { Surface, Text, IconButton } from 'react-native-paper';
 
 interface Transaction {
   id: number;
-  type: 'income' | 'expense';
+  type: 'income' | 'expense' | 'CLOSING' | 'SUPPLIER' | 'SALARY';
   amount: number | string;
-  date: string;
-  description: string;
+  date?: string;
+  description?: string;
+  storeId?: number;
+  storeName?: string;
 }
 
 interface BalanceSummaryProps {
   transactions: Transaction[];
+  storeName?: string | null;
 }
 
-const BalanceSummary: React.FC<BalanceSummaryProps> = ({ transactions }) => {
+const BalanceSummary: React.FC<BalanceSummaryProps> = ({ transactions, storeName }) => {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
   const balance = transactions.reduce((acc, curr) => {
     const amount = parseFloat(curr.amount.toString());
-    if (curr.type === 'income') {
+    if (curr.type === 'income' || curr.type === 'CLOSING') {
       acc.incomes += amount;
       acc.total += amount;
-    } else if (curr.type === 'expense') {
+    } else if (curr.type === 'expense' || curr.type === 'SUPPLIER' || curr.type === 'SALARY') {
       acc.expenses += amount;
       acc.total -= amount;
     }
@@ -44,7 +47,7 @@ const BalanceSummary: React.FC<BalanceSummaryProps> = ({ transactions }) => {
             styles.title,
             isMobile && styles.mobileTitle
           ]}>
-            Balance General
+            {storeName ? `Balance de ${storeName}` : 'Balance General'}
           </Text>
 
           <View style={styles.row}>

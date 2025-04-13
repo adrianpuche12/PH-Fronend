@@ -16,7 +16,7 @@ import { Card } from 'react-native-paper';
 import { Title } from 'react-native-paper';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { Button, TextInput, Snackbar, IconButton } from 'react-native-paper';
+import { Button, TextInput, Snackbar, IconButton, SegmentedButtons } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { useFocusEffect } from '@react-navigation/native';
 import LogoutButton from '@/components/LogoutButton';
@@ -31,13 +31,18 @@ interface Transaction {
   amount: number;
   date?: string;
   description?: string;
-  username?: string;
   closingsCount?: number;
   periodStart?: string;
   periodEnd?: string;
   supplier?: string;
   depositDate?: string;
   paymentDate?: string;
+  storeId?: number;
+  storeName?: string;
+  store?: {
+    id: number;
+    name: string;
+  };
 }
 
 
@@ -145,17 +150,21 @@ const BalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
 const CompactDateFilters = ({ 
   startDate, 
   endDate, 
+  selectedStore,
   setStartDate, 
   setEndDate, 
+  setSelectedStore,
   fetchData,
   setDatePickerOpen,
   setSelectedDateInput
 }: { 
   startDate?: Date; 
-  endDate?: Date; 
+  endDate?: Date;
+  selectedStore: number | null;
   setStartDate: (date?: Date) => void; 
-  setEndDate: (date?: Date) => void; 
-  fetchData: (start?: Date, end?: Date) => void;
+  setEndDate: (date?: Date) => void;
+  setSelectedStore: (storeId: number | null) => void;
+  fetchData: (start?: Date, end?: Date, storeId?: number | null) => void;
   setDatePickerOpen: (open: boolean) => void;
   setSelectedDateInput: (input: 'start' | 'end') => void;
 }) => {
@@ -206,14 +215,30 @@ const CompactDateFilters = ({
           theme={{ colors: { primary: '#D4A72B' } }}
         />
       </View>
+      
+      {/* Filtro de local compacto */}
+      <View style={styles.storeFilterCompact}>
+        <SegmentedButtons
+          value={selectedStore?.toString() || 'all'}
+          onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
+          buttons={[
+            { value: 'all', label: 'Todos' },
+            { value: '1', label: 'Denly' },
+            { value: '2', label: 'El Paraiso' },
+          ]}
+          style={styles.storeSelectorCompact}
+        />
+      </View>
+      
       <View style={styles.compactButtonsRow}>
-        {(startDate || endDate) && (
+        {(startDate || endDate || selectedStore) && (
           <Button
             mode="outlined"
             compact
             onPress={() => {
               setStartDate(undefined);
               setEndDate(undefined);
+              setSelectedStore(null);
             }}
             style={styles.compactClearButton}
             color="#D4A72B"
@@ -224,7 +249,7 @@ const CompactDateFilters = ({
         <Button
           mode="contained"
           compact
-          onPress={() => fetchData(startDate, endDate)}
+          onPress={() => fetchData(startDate, endDate, selectedStore)}
           style={styles.compactRefreshButton}
           icon="refresh"
           buttonColor="#2196F3"
@@ -244,6 +269,7 @@ const AdminScreen = () => {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDateInput, setSelectedDateInput] = useState<'start' | 'end'>('start');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedStore, setSelectedStore] = useState<number | null>(null);
 
   // Estados para el modal de edición
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -255,11 +281,11 @@ const AdminScreen = () => {
   const [newAmount, setNewAmount] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [newUsername, setNewUsername] = useState('');
   const [newClosingsCount, setNewClosingsCount] = useState('');
   const [newPeriodStart, setNewPeriodStart] = useState('');
   const [newPeriodEnd, setNewPeriodEnd] = useState('');
   const [newSupplier, setNewSupplier] = useState('');
+  const [newStoreId, setNewStoreId] = useState<number>(1);
 
   // Snackbar
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -273,17 +299,28 @@ const AdminScreen = () => {
   const isLargeScreen = screenWidth >= 768;
 
   // Función para obtener datos de dos endpoints y unificarlos.
-  // Se filtra también la parte de /transactions según el rango de fechas.
-  const fetchData = async (start?: Date, end?: Date) => {
+  const fetchData = async (start?: Date, end?: Date, storeId?: number | null) => {
     setLoading(true);
     try {
       // Se obtienen las operaciones desde el endpoint de operaciones.
       let urlOperations = `${REACT_APP_API_URL}/api/operations/all`;
+      const queryParams = [];
+      
       if (start && end) {
         const startStr = format(start, 'yyyy-MM-dd'); 
         const endStr = format(end, 'yyyy-MM-dd');
-        urlOperations += `?startDate=${startStr}&endDate=${endStr}`;
+        queryParams.push(`startDate=${startStr}`);
+        queryParams.push(`endDate=${endStr}`);
       }
+      
+      if (storeId) {
+        queryParams.push(`storeId=${storeId}`);
+      }
+      
+      if (queryParams.length > 0) {
+        urlOperations += `?${queryParams.join('&')}`;
+      }
+      
       const responseOps = await fetch(urlOperations);
       let operationsData: Transaction[] = [];
 
@@ -299,12 +336,17 @@ const AdminScreen = () => {
           } else if (op.type === 'SALARY' && op.depositDate) {
             newOp.date = op.depositDate;
           }
-
           return newOp;
         });
       }
 
-      const urlTransactions = `${REACT_APP_API_URL}/transactions`;
+      let urlTransactions = `${REACT_APP_API_URL}/transactions`;
+      const transactionParams = [];
+      
+      if (storeId) {
+        urlTransactions = `${REACT_APP_API_URL}/api/transactions/store/${storeId}`;
+      }
+      
       const responseTrans = await fetch(urlTransactions);
       let transactionsData: Transaction[] = [];
 
@@ -344,8 +386,8 @@ const AdminScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchData(startDate, endDate);
-    }, [startDate, endDate])
+      fetchData(startDate, endDate, selectedStore);
+    }, [startDate, endDate, selectedStore])
   );
 
   const onDismissDatePicker = () => {
@@ -429,7 +471,7 @@ const AdminScreen = () => {
       if (response.ok) {
         setSnackbarMessage('La transacción ha sido eliminada correctamente.');
         setSnackbarVisible(true);
-        fetchData(startDate, endDate);
+        fetchData(startDate, endDate, selectedStore);
       } else {
         Alert.alert('Error', 'No se pudo eliminar la transacción.');
       }
@@ -459,13 +501,13 @@ const AdminScreen = () => {
 
     setNewDate(dateValue);
     setNewDescription(transaction.description ?? '');
-    setNewUsername(transaction.username ?? '');
     setNewClosingsCount(
       transaction.closingsCount !== undefined ? transaction.closingsCount.toString() : ''
     );
     setNewPeriodStart(transaction.periodStart ?? '');
     setNewPeriodEnd(transaction.periodEnd ?? '');
     setNewSupplier(transaction.supplier ?? '');
+    setNewStoreId(transaction.store?.id || 1);
     setEditModalVisible(true);
   };
 
@@ -476,66 +518,55 @@ const AdminScreen = () => {
       Alert.alert('Error', 'Por favor ingrese un monto válido.');
       return;
     }
-    let updatedTransaction: any = {};
-    switch (editingTransaction.type) {
-      case 'CLOSING': {
-        updatedTransaction = {
-          amount: parsedAmount,
-          depositDate: newDate,
-          periodStart: newPeriodStart,
-          periodEnd: newPeriodEnd,
-          username: newUsername,
-        };
-        break;
-      }
-      case 'SUPPLIER': {
-        if (newUsername.trim() === '') {
-          Alert.alert('Error', 'El nombre de usuario es obligatorio.');
-          return;
-        }
-        updatedTransaction = {
-          amount: parsedAmount,
-          paymentDate: newDate,
-          supplier: newSupplier,
-          username: newUsername,
-        };
-        break;
-      }
-      case 'SALARY': {
-        updatedTransaction = {
-          amount: parsedAmount,
-          depositDate: newDate,
-          description: newDescription,
-          username: newUsername,
-        };
-        break;
-      }
-      case 'income':
-      case 'expense': {
-        updatedTransaction = {
-          type: editingTransaction.type,
-          amount: parsedAmount,
-          date: newDate,
-          description: newDescription,
-        };
-        break;
-      }
-      default: {
-        updatedTransaction = {
-          amount: parsedAmount,
-          date: newDate,
-          description: newDescription,
-        };
-      }
+    
+    let updatedTransaction = {};
+    
+    if (editingTransaction.type === 'CLOSING') {
+      updatedTransaction = {
+        amount: parsedAmount,
+        username: "default_user",
+        closingsCount: newClosingsCount ? parseInt(newClosingsCount) : undefined,
+        periodStart: newPeriodStart || undefined,
+        periodEnd: newPeriodEnd || undefined,
+        depositDate: newDate || undefined,
+        storeId: newStoreId
+      };
+    } else if (editingTransaction.type === 'SUPPLIER') {
+      updatedTransaction = {
+        amount: parsedAmount,
+        username: "default_user",
+        supplier: newSupplier || undefined,
+        paymentDate: newDate || undefined,
+        storeId: newStoreId
+      };
+    } else if (editingTransaction.type === 'SALARY') {
+      updatedTransaction = {
+        amount: parsedAmount,
+        description: newDescription || undefined,
+        username: "default_user",
+        depositDate: newDate || undefined,
+        storeId: newStoreId
+      };
+    } else {
+      updatedTransaction = {
+        type: editingTransaction.type,
+        amount: parsedAmount,
+        date: newDate || undefined,
+        description: newDescription || undefined,
+        store: { id: newStoreId }
+      };
     }
-
+  
     try {
+      console.log("Enviando datos:", JSON.stringify(updatedTransaction, null, 2));
+      
       let url = '';
       if (editingTransaction.type === 'income' || editingTransaction.type === 'expense') {
         url = `${REACT_APP_API_URL}/transactions/${editingTransaction.id}`;
       } else {
         url = `${REACT_APP_API_URL}/api/operations/${editingTransaction.type}/${editingTransaction.id}`;
       }
+      
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -543,16 +574,23 @@ const AdminScreen = () => {
         },
         body: JSON.stringify(updatedTransaction),
       });
+      
       if (response.ok) {
         setSnackbarMessage('La transacción ha sido actualizada correctamente.');
         setSnackbarVisible(true);
         setEditModalVisible(false);
         setEditingTransaction(null);
-        fetchData(startDate, endDate);
+        fetchData(startDate, endDate, selectedStore);
       } else {
-        const errorData = await response.json().catch(() => null);
-        const errorMessage = errorData?.message || 'No se pudo actualizar la transacción.';
-        Alert.alert('Error', errorMessage);
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          const errorMessage = errorData.message || 'No se pudo actualizar la transacción.';
+          Alert.alert('Error', errorMessage);
+        } catch {
+          Alert.alert('Error', `Error del servidor: ${response.status}`);
+        }
       }
     } catch (error) {
       console.error('Error al actualizar la transacción:', error);
@@ -568,10 +606,27 @@ const AdminScreen = () => {
   // Render del modal de edición para cada tipo
   const renderEditFields = () => {
     if (!editingTransaction) return null;
+
+    const storeSelector = (
+      <View style={styles.modalInputContainer}>
+        <Text style={styles.modalInputLabel}>Local:</Text>
+        <SegmentedButtons
+          value={newStoreId.toString()}
+          onValueChange={(value) => setNewStoreId(Number(value))}
+          buttons={[
+            { value: '1', label: 'Denly' },
+            { value: '2', label: 'El Paraiso' },
+          ]}
+          style={styles.storeSelector}
+        />
+      </View>
+    );
+    
     switch (editingTransaction.type) {
       case 'CLOSING':
         return (
           <>
+            {storeSelector}
             <TextInput
               label="Monto"
               value={newAmount}
@@ -621,17 +676,12 @@ const AdminScreen = () => {
                 setDatePickerEditVisible(true);
               }} />}
             />
-            <TextInput
-              label="Usuario"
-              value={newUsername}
-              onChangeText={setNewUsername}
-              style={styles.modalInput}
-            />
           </>
         );
       case 'SUPPLIER':
         return (
           <>
+            {storeSelector}
             <TextInput
               label="Monto"
               value={newAmount}
@@ -659,17 +709,12 @@ const AdminScreen = () => {
               onChangeText={setNewSupplier}
               style={styles.modalInput}
             />
-            <TextInput
-              label="Usuario"
-              value={newUsername}
-              onChangeText={setNewUsername}
-              style={styles.modalInput}
-            />
           </>
         );
       case 'SALARY':
         return (
           <>
+            {storeSelector}
             <TextInput
               label="Monto"
               value={newAmount}
@@ -697,18 +742,13 @@ const AdminScreen = () => {
               onChangeText={setNewDescription}
               style={styles.modalInput}
             />
-            <TextInput
-              label="Usuario"
-              value={newUsername}
-              onChangeText={setNewUsername}
-              style={styles.modalInput}
-            />
           </>
         );
       case 'income':
       case 'expense':
         return (
           <>
+            {storeSelector}
             <TextInput
               label="Monto"
               value={newAmount}
@@ -741,6 +781,7 @@ const AdminScreen = () => {
       default:
         return (
           <>
+            {storeSelector}
             <TextInput
               label="Monto"
               value={newAmount}
@@ -834,26 +875,44 @@ const AdminScreen = () => {
               </View>
             )}
 
-            {item.username && (
+            {/* Mostrar local */}
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>
+                {'Local: ' + (
+                  item.store?.name || 
+                  item.storeName ||
+                  (item.store?.id ? 
+                    (item.store.id === 1 ? 'Denly' : 'El Paraiso') : 
+                    (item.storeId ? 
+                      (item.storeId === 1 ? 'Denly' : 'El Paraiso') : 
+                      'No asignado'
+                    )
+                  )
+                )}
+              </Text>
+            </View>
+
+            {item.type === 'CLOSING' && item.closingsCount && (
               <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="account" size={16} color="#8B7214" />
-                <Text style={styles.detailText}>{'Usuario: ' + item.username}</Text>
+                <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
               </View>
             )}
 
-            {item.supplier && (
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
-                <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
-              </View>
-            )}
-
-            {item.periodStart && item.periodEnd && (
+            {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
                 <Text style={styles.detailText}>
-                  {'Período: ' + formatDate(item.periodStart) + ' - ' + formatDate(item.periodEnd)}
+                  {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
                 </Text>
+              </View>
+            )}
+
+            {item.type === 'SUPPLIER' && item.supplier && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
               </View>
             )}
           </View>
@@ -882,9 +941,6 @@ const AdminScreen = () => {
       </Card>
     );
   };
-
-  // 7. Modificar los botones de paginación
-  // Reemplazar el renderPagination con este diseño:
 
   const renderPagination = () => (
     <View style={styles.paginationContainer}>
@@ -956,8 +1012,10 @@ const AdminScreen = () => {
           <CompactDateFilters 
             startDate={startDate}
             endDate={endDate}
+            selectedStore={selectedStore}
             setStartDate={setStartDate}
             setEndDate={setEndDate}
+            setSelectedStore={setSelectedStore}
             fetchData={fetchData}
             setDatePickerOpen={setDatePickerOpen}
             setSelectedDateInput={setSelectedDateInput}
@@ -968,57 +1026,80 @@ const AdminScreen = () => {
         // Para pantallas grandes, utilizamos el diseño original
         <View style={headerContainerStyle}>
           <View style={dateInputsContainerStyle}>
-            <TextInput
-              label="Fecha Inicio"
-              value={formatDate(startDate)}
-              mode="outlined"
-              style={styles.dateInput}
-              onFocus={() => {
-                setSelectedDateInput('start');
-                setDatePickerOpen(true);
-              }}
-              left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-              outlineColor="#DDDDDD"
-              activeOutlineColor="#D4A72B"
-              theme={{ colors: { primary: '#D4A72B' } }}
-            />
+            <View style={styles.filtersContainer}>
+              <View style={styles.dateFiltersRow}>
+                <TextInput
+                  label="Fecha Inicio"
+                  value={formatDate(startDate)}
+                  mode="outlined"
+                  style={styles.dateInput}
+                  onFocus={() => {
+                    setSelectedDateInput('start');
+                    setDatePickerOpen(true);
+                  }}
+                  left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
+                  outlineColor="#DDDDDD"
+                  activeOutlineColor="#D4A72B"
+                  theme={{ colors: { primary: '#D4A72B' } }}
+                />
 
-            <TextInput
-              label="Fecha Fin"
-              value={formatDate(endDate)}
-              mode="outlined"
-              style={styles.dateInput}
-              onFocus={() => {
-                setSelectedDateInput('end');
-                setDatePickerOpen(true);
-              }}
-              left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-              outlineColor="#DDDDDD"
-              activeOutlineColor="#D4A72B"
-              theme={{ colors: { primary: '#D4A72B' } }}
-            />
-            {(startDate || endDate) && (
-              <Button
-                mode="outlined"
-                onPress={() => {
-                  setStartDate(undefined);
-                  setEndDate(undefined);
-                }}
-                style={styles.clearButton}
-                color="#D4A72B"
-              >
-                Limpiar
-              </Button>
-            )}
-            <Button
-              mode="contained"
-              onPress={() => fetchData(startDate, endDate)}
-              style={styles.refreshButton}
-              icon="refresh"
-              buttonColor="#2196F3"
-            >
-              Actualizar
-            </Button>
+                <TextInput
+                  label="Fecha Fin"
+                  value={formatDate(endDate)}
+                  mode="outlined"
+                  style={styles.dateInput}
+                  onFocus={() => {
+                    setSelectedDateInput('end');
+                    setDatePickerOpen(true);
+                  }}
+                  left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
+                  outlineColor="#DDDDDD"
+                  activeOutlineColor="#D4A72B"
+                  theme={{ colors: { primary: '#D4A72B' } }}
+                />
+              </View>
+              
+              {/* Filtro por local */}
+              <View style={styles.storeFilterContainer}>
+                <Text style={styles.filterLabel}>Filtrar por Local:</Text>
+                <SegmentedButtons
+                  value={selectedStore?.toString() || 'all'}
+                  onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
+                  buttons={[
+                    { value: 'all', label: 'Todos' },
+                    { value: '1', label: 'Denly' },
+                    { value: '2', label: 'El Paraiso' },
+                  ]}
+                  style={styles.storeSelector}
+                />
+              </View>
+              
+              <View style={styles.buttonGroup}>
+                {(startDate || endDate || selectedStore) && (
+                  <Button
+                    mode="outlined"
+                    onPress={() => {
+                      setStartDate(undefined);
+                      setEndDate(undefined);
+                      setSelectedStore(null);
+                    }}
+                    style={styles.clearButton}
+                    color="#D4A72B"
+                  >
+                    Limpiar Filtros
+                  </Button>
+                )}
+                <Button
+                  mode="contained"
+                  onPress={() => fetchData(startDate, endDate, selectedStore)}
+                  style={styles.refreshButton}
+                  icon="refresh"
+                  buttonColor="#2196F3"
+                >
+                  Actualizar
+                </Button>
+              </View>
+            </View>
           </View>
           <BalanceCard transactions={transactions} />
         </View>
@@ -1170,6 +1251,8 @@ const styles = StyleSheet.create({
   dateInput: {
     backgroundColor: '#fff',
     marginBottom: 12,
+    flex: 1,
+    marginHorizontal: 5,
   },
   refreshButton: {
     borderRadius: 30,
@@ -1220,6 +1303,40 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     borderRadius: 30,
     height: 36,
+  },
+  
+  // Estilos para la selección de local
+  storeFilterContainer: {
+    marginBottom: 10,
+  },
+  storeFilterCompact: {
+    marginBottom: 8,
+  },
+  filtersContainer: {
+    width: '100%',
+  },
+  dateFiltersRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#555',
+  },
+  storeSelector: {
+    marginBottom: 5,
+  },
+  storeSelectorCompact: {
+    marginBottom: 5, 
+    transform: [{ scale: 0.95 }],
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
   },
   
   // Estilos para el BalanceCard colapsable
@@ -1366,6 +1483,15 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 5,
     borderRadius: 30,
+  },
+  modalInputContainer: {
+    marginBottom: 12,
+  },
+  modalInputLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#555',
   },
   
   // Estilos para la paginación
