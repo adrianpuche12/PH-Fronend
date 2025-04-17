@@ -23,6 +23,7 @@ import LogoutButton from '@/components/LogoutButton';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { REACT_APP_API_URL } from '../config';
 import { format, parseISO } from 'date-fns';
+import ExcelManager from '@/components/ExcelManager';
 
 // Actualizamos la interfaz para incluir los nuevos tipos
 interface Transaction {
@@ -49,7 +50,7 @@ interface Transaction {
 const ITEMS_PER_PAGE = 5;
 
 const CollapsibleBalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
-  const [isCollapsed, setIsCollapsed] = useState(true); 
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const animatedHeight = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -75,8 +76,8 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: Transaction[] 
 
   return (
     <Card style={styles.balanceCard}>
-      <TouchableOpacity 
-        style={styles.balanceHeaderContainer} 
+      <TouchableOpacity
+        style={styles.balanceHeaderContainer}
         onPress={() => setIsCollapsed(!isCollapsed)}
       >
         <Title style={styles.balanceTitle}>Balance General</Title>
@@ -86,10 +87,10 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: Transaction[] 
           onPress={() => setIsCollapsed(!isCollapsed)}
         />
       </TouchableOpacity>
-      
+
       <Animated.View style={[
-        styles.balanceContentContainer, 
-        { 
+        styles.balanceContentContainer,
+        {
           height: balanceContainerHeight,
           opacity: animatedHeight
         }
@@ -147,26 +148,28 @@ const BalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
   );
 };
 
-const CompactDateFilters = ({ 
-  startDate, 
-  endDate, 
+const CompactDateFilters = ({
+  startDate,
+  endDate,
   selectedStore,
-  setStartDate, 
-  setEndDate, 
+  setStartDate,
+  setEndDate,
   setSelectedStore,
   fetchData,
   setDatePickerOpen,
-  setSelectedDateInput
-}: { 
-  startDate?: Date; 
+  setSelectedDateInput,
+  onExcelPress,
+}: {
+  startDate?: Date;
   endDate?: Date;
   selectedStore: number | null;
-  setStartDate: (date?: Date) => void; 
+  setStartDate: (date?: Date) => void;
   setEndDate: (date?: Date) => void;
   setSelectedStore: (storeId: number | null) => void;
   fetchData: (start?: Date, end?: Date, storeId?: number | null) => void;
   setDatePickerOpen: (open: boolean) => void;
   setSelectedDateInput: (input: 'start' | 'end') => void;
+  onExcelPress: () => void;
 }) => {
   const formatDate = (date?: Date | string) => {
     if (!date) return '';
@@ -215,7 +218,7 @@ const CompactDateFilters = ({
           theme={{ colors: { primary: '#D4A72B' } }}
         />
       </View>
-      
+
       {/* Filtro de local compacto */}
       <View style={styles.storeFilterCompact}>
         <SegmentedButtons
@@ -229,7 +232,7 @@ const CompactDateFilters = ({
           style={styles.storeSelectorCompact}
         />
       </View>
-      
+
       <View style={styles.compactButtonsRow}>
         {(startDate || endDate || selectedStore) && (
           <Button
@@ -256,6 +259,16 @@ const CompactDateFilters = ({
         >
           Actualizar
         </Button>
+        <Button
+          mode="contained"
+          compact
+          onPress={onExcelPress}
+          style={styles.compactExcelButton}
+          icon="microsoft-excel"
+          buttonColor="#28a745"
+        >
+          Excel
+        </Button>
       </View>
     </View>
   );
@@ -276,6 +289,9 @@ const AdminScreen = () => {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [datePickerEditVisible, setDatePickerEditVisible] = useState(false);
   const [dateEditField, setDateEditField] = useState<'date' | 'periodStart' | 'periodEnd'>('date');
+
+  // Estado para gestión de Excel
+  const [showExcelManager, setShowExcelManager] = useState(false);
 
   // Campos para editar
   const [newAmount, setNewAmount] = useState('');
@@ -298,6 +314,13 @@ const AdminScreen = () => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
 
+  // Manejador para éxito de importación desde Excel
+  const handleImportSuccess = () => {
+    fetchData(startDate, endDate, selectedStore);
+    setSnackbarMessage('Operaciones importadas correctamente');
+    setSnackbarVisible(true);
+  };
+
   // Función para obtener datos de dos endpoints y unificarlos.
   const fetchData = async (start?: Date, end?: Date, storeId?: number | null) => {
     setLoading(true);
@@ -305,22 +328,22 @@ const AdminScreen = () => {
       // Se obtienen las operaciones desde el endpoint de operaciones.
       let urlOperations = `${REACT_APP_API_URL}/api/operations/all`;
       const queryParams = [];
-      
+
       if (start && end) {
-        const startStr = format(start, 'yyyy-MM-dd'); 
+        const startStr = format(start, 'yyyy-MM-dd');
         const endStr = format(end, 'yyyy-MM-dd');
         queryParams.push(`startDate=${startStr}`);
         queryParams.push(`endDate=${endStr}`);
       }
-      
+
       if (storeId) {
         queryParams.push(`storeId=${storeId}`);
       }
-      
+
       if (queryParams.length > 0) {
         urlOperations += `?${queryParams.join('&')}`;
       }
-      
+
       const responseOps = await fetch(urlOperations);
       let operationsData: Transaction[] = [];
 
@@ -342,11 +365,11 @@ const AdminScreen = () => {
 
       let urlTransactions = `${REACT_APP_API_URL}/transactions`;
       const transactionParams = [];
-      
+
       if (storeId) {
         urlTransactions = `${REACT_APP_API_URL}/api/transactions/store/${storeId}`;
       }
-      
+
       const responseTrans = await fetch(urlTransactions);
       let transactionsData: Transaction[] = [];
 
@@ -361,7 +384,7 @@ const AdminScreen = () => {
             if (!tx.date) return false;
 
             try {
-              const txDateStr = typeof tx.date === 'string' 
+              const txDateStr = typeof tx.date === 'string'
                 ? tx.date.split('T')[0]
                 : format(new Date(tx.date), 'yyyy-MM-dd');
 
@@ -518,9 +541,9 @@ const AdminScreen = () => {
       Alert.alert('Error', 'Por favor ingrese un monto válido.');
       return;
     }
-    
+
     let updatedTransaction = {};
-    
+
     if (editingTransaction.type === 'CLOSING') {
       updatedTransaction = {
         amount: parsedAmount,
@@ -556,17 +579,17 @@ const AdminScreen = () => {
         store: { id: newStoreId }
       };
     }
-  
+
     try {
       console.log("Enviando datos:", JSON.stringify(updatedTransaction, null, 2));
-      
+
       let url = '';
       if (editingTransaction.type === 'income' || editingTransaction.type === 'expense') {
         url = `${REACT_APP_API_URL}/transactions/${editingTransaction.id}`;
       } else {
         url = `${REACT_APP_API_URL}/api/operations/${editingTransaction.type}/${editingTransaction.id}`;
       }
-      
+
       const response = await fetch(url, {
         method: 'PUT',
         headers: {
@@ -574,7 +597,7 @@ const AdminScreen = () => {
         },
         body: JSON.stringify(updatedTransaction),
       });
-      
+
       if (response.ok) {
         setSnackbarMessage('La transacción ha sido actualizada correctamente.');
         setSnackbarVisible(true);
@@ -621,7 +644,7 @@ const AdminScreen = () => {
         />
       </View>
     );
-    
+
     switch (editingTransaction.type) {
       case 'CLOSING':
         return (
@@ -812,7 +835,7 @@ const AdminScreen = () => {
           </>
         );
     }
-  };
+  }
 
   // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
@@ -880,12 +903,12 @@ const AdminScreen = () => {
               <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
               <Text style={styles.detailText}>
                 {'Local: ' + (
-                  item.store?.name || 
+                  item.store?.name ||
                   item.storeName ||
-                  (item.store?.id ? 
-                    (item.store.id === 1 ? 'Denly' : 'El Paraiso') : 
-                    (item.storeId ? 
-                      (item.storeId === 1 ? 'Denly' : 'El Paraiso') : 
+                  (item.store?.id ?
+                    (item.store.id === 1 ? 'Denly' : 'El Paraiso') :
+                    (item.storeId ?
+                      (item.storeId === 1 ? 'Denly' : 'El Paraiso') :
                       'No asignado'
                     )
                   )
@@ -998,7 +1021,6 @@ const AdminScreen = () => {
     isLargeScreen ? { flex: 0.48 } : {}
   ];
 
-
   return (
     <ThemedView style={styles.container}>
       <ThemedText style={styles.title}>Todas las Operaciones</ThemedText>
@@ -1009,7 +1031,7 @@ const AdminScreen = () => {
       {/* Para pantallas móviles, utilizamos componentes compactos */}
       {!isLargeScreen ? (
         <View style={styles.mobileControlsContainer}>
-          <CompactDateFilters 
+          <CompactDateFilters
             startDate={startDate}
             endDate={endDate}
             selectedStore={selectedStore}
@@ -1019,6 +1041,7 @@ const AdminScreen = () => {
             fetchData={fetchData}
             setDatePickerOpen={setDatePickerOpen}
             setSelectedDateInput={setSelectedDateInput}
+            onExcelPress={() => setShowExcelManager(true)}
           />
           <CollapsibleBalanceCard transactions={transactions} />
         </View>
@@ -1058,7 +1081,7 @@ const AdminScreen = () => {
                   theme={{ colors: { primary: '#D4A72B' } }}
                 />
               </View>
-              
+
               {/* Filtro por local */}
               <View style={styles.storeFilterContainer}>
                 <Text style={styles.filterLabel}>Filtrar por Local:</Text>
@@ -1073,7 +1096,7 @@ const AdminScreen = () => {
                   style={styles.storeSelector}
                 />
               </View>
-              
+
               <View style={styles.buttonGroup}>
                 {(startDate || endDate || selectedStore) && (
                   <Button
@@ -1097,6 +1120,15 @@ const AdminScreen = () => {
                   buttonColor="#2196F3"
                 >
                   Actualizar
+                </Button>
+                <Button
+                  mode="contained"
+                  onPress={() => setShowExcelManager(true)}
+                  style={styles.excelButton}
+                  icon="microsoft-excel"
+                  buttonColor="#28a745"
+                >
+                  Gestión Excel
                 </Button>
               </View>
             </View>
@@ -1189,6 +1221,14 @@ const AdminScreen = () => {
         </View>
       </Modal>
 
+      {/* Modal de gestión de Excel */}
+      <ExcelManager
+        visible={showExcelManager}
+        onDismiss={() => setShowExcelManager(false)}
+        transactions={transactions}
+        onImportSuccess={handleImportSuccess}
+      />
+
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
@@ -1259,12 +1299,20 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 10,
     elevation: 2,
+    marginRight: 8,
   },
   clearButton: {
     marginTop: 5,
     borderColor: '#D4A72B',
+    marginRight: 8,
   },
-  
+  excelButton: {
+    borderRadius: 30,
+    marginTop: 5,
+    marginBottom: 10,
+    elevation: 2,
+  },
+
   // Estilos para la vista móvil (nuevos, compactos)
   mobileControlsContainer: {
     padding: 10,
@@ -1301,10 +1349,17 @@ const styles = StyleSheet.create({
   compactRefreshButton: {
     flex: 1,
     marginLeft: 5,
+    marginRight: 5,
     borderRadius: 30,
     height: 36,
   },
-  
+  compactExcelButton: {
+    flex: 1,
+    marginLeft: 5,
+    borderRadius: 30,
+    height: 36,
+  },
+
   // Estilos para la selección de local
   storeFilterContainer: {
     marginBottom: 10,
@@ -1330,7 +1385,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   storeSelectorCompact: {
-    marginBottom: 5, 
+    marginBottom: 5,
     transform: [{ scale: 0.95 }],
   },
   buttonGroup: {
@@ -1338,7 +1393,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 5,
   },
-  
+
   // Estilos para el BalanceCard colapsable
   balanceCard: {
     borderRadius: 10,
@@ -1384,7 +1439,7 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-  
+
   // Estilos para la lista de transacciones
   scrollView: {
     padding: 16,
