@@ -837,6 +837,18 @@ const AdminScreen = () => {
     }
   }
 
+  const traductionsES = {
+    CLOSING: "Cierre",
+    SUPPLIER: "Proveedor",
+    SALARY: "Salario",
+    expense: "Egreso",
+    income: "Ingreso",
+  }
+
+  const traductionType = (type: keyof typeof traductionsES) => {
+      return traductionsES[type];
+  };
+
   // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
     let dateToShow = item.date;
@@ -875,7 +887,7 @@ const AdminScreen = () => {
             <View style={styles.transactionTypeContainer}>
               <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
               <Text style={[styles.transactionType, { color: typeColor }]}>
-                {item.type}
+              traductionType({item.type})
               </Text>
             </View>
             <Text style={styles.transactionAmount}>
