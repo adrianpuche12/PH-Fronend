@@ -25,6 +25,14 @@ import { REACT_APP_API_URL } from '../config';
 import { format, parseISO } from 'date-fns';
 import ExcelManager from '@/components/ExcelManager';
 
+const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
+  income:   'Ingreso',
+  expense:  'Egreso',
+  SALARY:   'Salario',
+  SUPPLIER: 'Proveedor',
+  CLOSING:  'Cierre',
+};
+
 // Actualizamos la interfaz para incluir los nuevos tipos
 interface Transaction {
   id: number;
@@ -836,19 +844,6 @@ const AdminScreen = () => {
         );
     }
   }
-
-  const traductionsES = {
-    CLOSING: "Cierre",
-    SUPPLIER: "Proveedor",
-    SALARY: "Salario",
-    expense: "Egreso",
-    income: "Ingreso",
-  }
-
-  const traductionType = (type: keyof typeof traductionsES) => {
-      return traductionsES[type];
-  };
-
   // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
     let dateToShow = item.date;
@@ -887,7 +882,7 @@ const AdminScreen = () => {
             <View style={styles.transactionTypeContainer}>
               <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
               <Text style={[styles.transactionType, { color: typeColor }]}>
-              traductionType({item.type})
+              {TRANSACTION_LABELS[item.type]}
               </Text>
             </View>
             <Text style={styles.transactionAmount}>
@@ -928,14 +923,14 @@ const AdminScreen = () => {
               </Text>
             </View>
 
-            {item.type === 'CLOSING' && item.closingsCount && (
+            {TRANSACTION_LABELS[item.type]=== 'CLOSING' && item.closingsCount && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
                 <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
               </View>
             )}
 
-            {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
+            {TRANSACTION_LABELS[item.type]=== 'CLOSING' && item.periodStart && item.periodEnd && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
                 <Text style={styles.detailText}>
@@ -944,7 +939,7 @@ const AdminScreen = () => {
               </View>
             )}
 
-            {item.type === 'SUPPLIER' && item.supplier && (
+            {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
                 <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
@@ -1191,7 +1186,11 @@ const AdminScreen = () => {
             <ThemedText style={styles.modalTitle}>Editar Transacción</ThemedText>
             <TextInput
               label="Tipo"
-              value={editingTransaction ? editingTransaction.type : ''}
+              value={
+                editingTransaction && editingTransaction.type
+                  ? TRANSACTION_LABELS[editingTransaction.type]
+                  : ''
+              }
               disabled
               style={styles.modalInput}
             />
