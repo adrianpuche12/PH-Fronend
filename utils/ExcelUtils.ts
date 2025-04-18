@@ -196,6 +196,162 @@ export const createImportTemplate = async () => {
 // Función para importar datos desde Excel
 export const importFromExcel = async (apiUrl: string) => {
   try {
+    const processSpecialTransactions = async (
+      transactions: any[],
+      apiUrl: string
+    ): Promise<{ imported: number, errors: string[] }> => {
+      let imported = 0;
+      const errors: string[] = [];
+
+      for (const transaction of transactions) {
+        try {
+          let endpoint = '';
+
+          if (transaction.type === 'income' || transaction.type === 'expense') {
+            endpoint = `${apiUrl}/transactions`;
+          } else if (transaction.type === 'CLOSING') {
+            endpoint = `${apiUrl}/api/forms/closing-deposits`;
+          } else if (transaction.type === 'SUPPLIER') {
+            endpoint = `${apiUrl}/api/forms/supplier-payments`;
+          } else if (transaction.type === 'SALARY') {
+            endpoint = `${apiUrl}/api/forms/salary-payments`;
+          } else {
+            errors.push(`Tipo desconocido: ${transaction.type}`);
+            continue;
+          }
+
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(transaction),
+          });
+
+          if (response.ok) {
+            imported++;
+          } else {
+            const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
+            errors.push(`Error en ${transaction.type}: ${errorData.message || response.statusText}`);
+          }
+        } catch (error) {
+          errors.push(`Error al procesar ${transaction.type}: ${error.message}`);
+        }
+      }
+
+      return { imported, errors };
+    };
+
+    const processTransactionsForImport = (jsonData: any[]): any[] => {
+      return jsonData.map((row: any) => {
+        let storeId;
+        if (row['Local'] === 'Denly') {
+          storeId = 1;
+        } else if (row['Local'] === 'El Paraiso') {
+          storeId = 2;
+        }
+
+        const baseTransaction = {
+          type: row['Tipo'],
+          amount: parseFloat(row['Monto'].toString()),
+          date: row['Fecha'],
+          description: row['Descripción'] || '',
+          store: { id: storeId }
+        };
+
+        switch (row['Tipo']) {
+          case 'CLOSING':
+            return {
+              ...baseTransaction,
+              username: "default_user",
+              closingsCount: row['CierresCantidad'] ? parseInt(row['CierresCantidad'].toString()) : undefined,
+              periodStart: row['PeriodoInicio'] || undefined,
+              periodEnd: row['PeriodoFin'] || undefined,
+              depositDate: row['Fecha']
+            };
+
+          case 'SUPPLIER':
+            return {
+              ...baseTransaction,
+              username: "default_user",
+              supplier: row['Proveedor'] || undefined,
+              paymentDate: row['Fecha']
+            };
+
+          case 'SALARY':
+            return {
+              ...baseTransaction,
+              username: "default_user",
+              depositDate: row['Fecha']
+            };
+
+          default:
+            return baseTransaction;
+        }
+      });
+    };
+
+    const validateImportData = (data: any[]): boolean => {
+      if (!data || data.length === 0) return false;
+
+      const requiredColumns = ['Tipo', 'Monto', 'Fecha', 'Local'];
+      const firstRow = data[0];
+
+      for (const column of requiredColumns) {
+        if (!(column in firstRow)) return false;
+      }
+
+      for (const row of data) {
+        const validTypes = ['income', 'expense', 'CLOSING', 'SALARY', 'SUPPLIER'];
+        if (!validTypes.includes(row['Tipo'])) return false;
+
+        if (isNaN(parseFloat(row['Monto'].toString()))) return false;
+
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(row['Fecha'])) return false;
+
+        if (!['Denly', 'El Paraiso'].includes(row['Local'])) return false;
+
+        if (row['Tipo'] === 'CLOSING') {
+          if (row['PeriodoInicio'] && !dateRegex.test(row['PeriodoInicio'])) return false;
+          if (row['PeriodoFin'] && !dateRegex.test(row['PeriodoFin'])) return false;
+        }
+      }
+
+      return true;
+    };
+
+    const handleParsedExcelData = async (jsonData: any[]) => {
+      if (!validateImportData(jsonData)) {
+        return {
+          success: false,
+          message: 'El formato del archivo no es válido. Por favor use la plantilla proporcionada.'
+        };
+      }
+
+      const transactions = processTransactionsForImport(jsonData);
+      const result = await processSpecialTransactions(transactions, apiUrl);
+
+      if (result.imported === transactions.length) {
+        return {
+          success: true,
+          message: `Importación exitosa: ${result.imported} transacciones importadas`
+        };
+      } else if (result.imported > 0) {
+        return {
+          success: true,
+          message: `Importación parcial: ${result.imported} de ${transactions.length} transacciones importadas`,
+          details: { errors: result.errors }
+        };
+      } else {
+        return {
+          success: false,
+          message: 'No se pudo importar ninguna transacción',
+          details: { errors: result.errors }
+        };
+      }
+    };
+
     if (Platform.OS === 'web') {
       return new Promise<{ success: boolean, message: string, details?: any }>((resolve) => {
         const input = document.createElement('input');
@@ -218,92 +374,9 @@ export const importFromExcel = async (apiUrl: string) => {
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
-                if (!validateImportData(jsonData)) {
-                  resolve({
-                    success: false,
-                    message: 'El formato del archivo no es válido. Por favor use la plantilla proporcionada.'
-                  });
-                  return;
-                }
-                const transactions = processTransactionsForImport(jsonData);
-                const standardTransactions = transactions.filter(t =>
-                  t.type === 'income' || t.type === 'expense');
 
-                const closingTransactions = transactions.filter(t => t.type === 'CLOSING');
-                const supplierTransactions = transactions.filter(t => t.type === 'SUPPLIER');
-                const salaryTransactions = transactions.filter(t => t.type === 'SALARY');
-                let totalImported = 0;
-                let totalErrors = 0;
-                const errors: string[] = [];
-
-                const processSpecialTransactions = async (
-                  transactions: any[],
-                  apiUrl: string
-                ): Promise<{ imported: number, errors: string[] }> => {
-                  let imported = 0;
-                  const errors: string[] = [];
-
-                  for (const transaction of transactions) {
-                    try {
-                      let endpoint = '';
-
-                      if (transaction.type === 'income' || transaction.type === 'expense') {
-                        endpoint = `${apiUrl}/api/transactions`;
-                      } else if (transaction.type === 'CLOSING') {
-                        endpoint = `${apiUrl}/api/closing-deposits`;
-                      } else if (transaction.type === 'SUPPLIER') {
-                        endpoint = `${apiUrl}/api/supplier-payments`;
-                      } else if (transaction.type === 'SALARY') {
-                        endpoint = `${apiUrl}/api/salary-payments`;
-                      } else {
-                        errors.push(`Tipo desconocido: ${transaction.type}`);
-                        continue;
-                      }
-
-                      console.log(`Enviando ${transaction.type} a ${endpoint}`, transaction);
-
-                      const response = await fetch(endpoint, {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(transaction),
-                      });
-
-                      if (response.ok) {
-                        imported++;
-                      } else {
-                        const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
-                        errors.push(`Error en ${transaction.type}: ${errorData.message || response.statusText}`);
-                      }
-                    } catch (error) {
-                      errors.push(`Error al procesar ${transaction.type}: ${error.message}`);
-                    }
-                  }
-
-                  return { imported, errors };
-                };
-
-                const result = await processSpecialTransactions(transactions, apiUrl);
-
-                if (result.imported === transactions.length) {
-                  return {
-                    success: true,
-                    message: `Importación exitosa: ${result.imported} transacciones importadas`
-                  };
-                } else if (result.imported > 0) {
-                  return {
-                    success: true,
-                    message: `Importación parcial: ${result.imported} de ${transactions.length} transacciones importadas`,
-                    details: { errors: result.errors }
-                  };
-                } else {
-                  return {
-                    success: false,
-                    message: 'No se pudo importar ninguna transacción',
-                    details: { errors: result.errors }
-                  };
-                }
+                const result = await handleParsedExcelData(jsonData);
+                resolve(result);
               } catch (error) {
                 resolve({
                   success: false,
@@ -331,57 +404,25 @@ export const importFromExcel = async (apiUrl: string) => {
       if (result.canceled) {
         return { success: false, message: 'Importación cancelada por el usuario' };
       }
+
       const filePath = result.assets[0].uri;
       const fileContent = await FileSystem.readAsStringAsync(filePath, {
         encoding: FileSystem.EncodingType.Base64
       });
+
       const workbook = XLSX.read(fileContent, { type: 'base64' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
-      if (!validateImportData(jsonData)) {
-        return {
-          success: false,
-          message: 'El formato del archivo no es válido. Por favor use la plantilla proporcionada.'
-        };
-      }
 
-      const transactions = processTransactionsForImport(jsonData);
-      const standardTransactions = transactions.filter(t =>
-        t.type === 'income' || t.type === 'expense');
-
-      const closingTransactions = transactions.filter(t => t.type === 'CLOSING');
-      const supplierTransactions = transactions.filter(t => t.type === 'SUPPLIER');
-      const salaryTransactions = transactions.filter(t => t.type === 'SALARY');
-      let totalImported = 0;
-      let totalErrors = 0;
-      const errors: string[] = [];
-
-      // Preparar el mensaje de resultado
-      if (totalImported > 0 && totalErrors === 0) {
-        return {
-          success: true,
-          message: `Importación exitosa: ${totalImported} transacciones importadas`
-        };
-      } else if (totalImported > 0 && totalErrors > 0) {
-        return {
-          success: true,
-          message: `Importación parcial: ${totalImported} transacciones importadas, ${totalErrors} con errores`,
-          details: { errors }
-        };
-      } else {
-        return {
-          success: false,
-          message: `Error en la importación: ${errors.join('; ')}`,
-          details: { errors }
-        };
-      }
+      return await handleParsedExcelData(jsonData);
     }
   } catch (error) {
     console.error('Error en importación:', error);
     return { success: false, message: 'Error en la importación: ' + error.message };
   }
 };
+
 
 // Función para procesar los datos de transacciones para importación
 const processTransactionsForImport = (jsonData: any[]): any[] => {
