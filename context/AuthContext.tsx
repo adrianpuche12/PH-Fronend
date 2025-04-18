@@ -128,58 +128,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshAccessToken = async () => {
-    try {
-      if (!authState.refreshToken) {
-        throw new Error("No refresh token available");
-      }
+  // const refreshAccessToken = async () => {
+  //   try {
+  //     if (!authState.refreshToken) {
+  //       throw new Error("No refresh token available");
+  //     }
 
-      const response = await axios.post(
-        `${API_KEYCLOAK_ADAPTER_URL}/token`,
-        new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: authState.refreshToken,
-          client_id: 'proyecto-h',
-        }),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-      );
+  //     const response = await axios.post(
+  //       `${API_KEYCLOAK_ADAPTER_URL}/token`,
+  //       new URLSearchParams({
+  //         grant_type: 'refresh_token',
+  //         refresh_token: authState.refreshToken,
+  //         client_id: 'proyecto-h',
+  //       }),
+  //       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+  //     );
 
-      const { access_token, refresh_token, expires_in } = response.data;
-      const decodedToken = jwtDecode<any>(access_token);
-      const userRoles = decodedToken.realm_access?.roles || [];
-      const isAdmin = userRoles.includes('admin');
-      const userName = decodedToken.preferred_username;
-      const userId = decodedToken.sub;
+  //     const { access_token, refresh_token, expires_in } = response.data;
+  //     const decodedToken = jwtDecode<any>(access_token);
+  //     const userRoles = decodedToken.realm_access?.roles || [];
+  //     const isAdmin = userRoles.includes('admin');
+  //     const userName = decodedToken.preferred_username;
+  //     const userId = decodedToken.sub;
 
-      await Storage.multiSet([
-        ['accessToken', access_token],
-        ['refreshToken', refresh_token],
-        ['expiresIn', expires_in.toString()],
-        ['userName', userName],
-        ['userId', userId],
-        ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
-      ]);
+  //     await Storage.multiSet([
+  //       ['accessToken', access_token],
+  //       ['refreshToken', refresh_token],
+  //       ['expiresIn', expires_in.toString()],
+  //       ['userName', userName],
+  //       ['userId', userId],
+  //       ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
+  //     ]);
 
-      setAxiosAuthHeader(access_token);
-      setAuthState(prev => ({
-        ...prev,
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        expiresIn: expires_in,
-        roles: isAdmin ? ['admin'] : ['user'],
-        userName,
-        userId,
-        loading: false,
-        error: null
-      }));
+  //     setAxiosAuthHeader(access_token);
+  //     setAuthState(prev => ({
+  //       ...prev,
+  //       accessToken: access_token,
+  //       refreshToken: refresh_token,
+  //       expiresIn: expires_in,
+  //       roles: isAdmin ? ['admin'] : ['user'],
+  //       userName,
+  //       userId,
+  //       loading: false,
+  //       error: null
+  //     }));
 
-      return response.data;
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-      await logout();
-      throw error;
-    }
-  };
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error('Error refreshing token:', error);
+  //     await logout();
+  //     throw error;
+  //   }
+  // };
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -297,7 +297,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (accessToken && refreshToken) {
           if (isTokenExpiringSoon(accessToken)) {
-            await refreshAccessToken();
+            //await refreshAccessToken();
           } else {
             setAxiosAuthHeader(accessToken);
             setAuthState({
@@ -335,8 +335,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ) {
           originalRequest._retry = true;
           try {
-            const newTokens = await refreshAccessToken();
-            originalRequest.headers['Authorization'] = `Bearer ${newTokens.access_token}`;
+            //const newTokens = await refreshAccessToken();
+            //originalRequest.headers['Authorization'] = `Bearer ${newTokens.access_token}`;
             return axios(originalRequest);
           } catch (refreshError) {
             await logout();
