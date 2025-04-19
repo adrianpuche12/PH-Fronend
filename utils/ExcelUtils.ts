@@ -22,9 +22,83 @@ interface Transaction {
   };
 }
 
+export const TRANSACTION_LABELS: Record<string, string> = {
+  'income': 'Ingreso',
+  'expense': 'Egreso',
+  'SALARY': 'Salario',
+  'SUPPLIER': 'Proveedor',
+  'CLOSING': 'Cierre',
+};
+
+export const TRANSACTION_TYPES: Record<string, string> = {
+  'Ingreso': 'income',
+  'Egreso': 'expense',
+  'Salario': 'SALARY',
+  'Proveedor': 'SUPPLIER',
+  'Cierre': 'CLOSING',
+};
+
+export const TRANSACTION_TYPES_NORMALIZED: Record<string, string> = {
+  'ingreso': 'income',
+  'INGRESO': 'income',
+  'Ingreso': 'income',
+  'egreso': 'expense',
+  'EGRESO': 'expense',
+  'Egreso': 'expense',
+  'cierre': 'CLOSING',
+  'CIERRE': 'CLOSING',
+  'Cierre': 'CLOSING',
+  'proveedor': 'SUPPLIER',
+  'PROVEEDOR': 'SUPPLIER',
+  'Proveedor': 'SUPPLIER',
+  'salario': 'SALARY',
+  'SALARIO': 'SALARY',
+  'Salario': 'SALARY',
+};
+
 export const IMPORT_TEMPLATE_HEADERS = [
   'Tipo', 'Monto', 'Fecha', 'Descripción', 'Local', 'Proveedor', 'CierresCantidad', 'PeriodoInicio', 'PeriodoFin'
 ];
+
+const normalizeTransactionType = (type: string): string => {
+  if (type in TRANSACTION_TYPES_NORMALIZED) {
+    return TRANSACTION_TYPES_NORMALIZED[type];
+  }
+  
+  const internalTypes = ['income', 'expense', 'CLOSING', 'SUPPLIER', 'SALARY'];
+  if (internalTypes.includes(type)) {
+    return type;
+  }
+  
+  const normalizedType = Object.keys(TRANSACTION_TYPES_NORMALIZED).find(
+    key => key.toLowerCase() === type.toLowerCase()
+  );
+  
+  if (normalizedType) {
+    return TRANSACTION_TYPES_NORMALIZED[normalizedType];
+  }
+  
+  return type;
+};
+
+const normalizeAmount = (amount: unknown): number => {
+  if (amount === null || amount === undefined) {
+    return 0;
+  }
+  if (typeof amount === 'number') {
+    return amount;
+  }
+  
+  let amountStr = String(amount).trim();
+  amountStr = amountStr.replace(/,/g, '');
+
+  if (!amountStr.includes('.') && /^\d+$/.test(amountStr)) {
+    return parseInt(amountStr, 10);
+  }
+  const parsed = parseFloat(amountStr);
+  
+  return isNaN(parsed) ? 0 : parsed;
+};
 
 // Función para exportar transacciones a Excel
 export const exportToExcel = async (transactions: Transaction[], fileName?: string) => {
@@ -35,10 +109,15 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
         (tx.storeId === 1 ? 'Denly' :
           tx.storeId === 2 ? 'El Paraiso' : 'No asignado');
 
+      const typeLabel = tx.type in TRANSACTION_LABELS ? TRANSACTION_LABELS[tx.type] : tx.type;
+      const formattedAmount = tx.amount.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+
       return {
-        'ID': tx.id || '',
-        'Tipo': tx.type || '',
-        'Monto': tx.amount,
+        'Tipo': typeLabel,
+        'Monto': formattedAmount,
         'Fecha': tx.date || '',
         'Descripción': tx.description || '',
         'Local': storeName,
@@ -52,9 +131,8 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
 
     const columnWidths = [
-      { wch: 5 },   // ID
       { wch: 15 },  // Tipo
-      { wch: 12 },  // Monto
+      { wch: 15 },  // Monto
       { wch: 12 },  // Fecha
       { wch: 30 },  // Descripción
       { wch: 15 },  // Local
@@ -65,13 +143,7 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
     ];
     worksheet['!cols'] = columnWidths;
 
-    formattedData.forEach((_, idx) => {
-      const cell = XLSX.utils.encode_cell({ r: idx + 1, c: 2 });
-      if (!worksheet[cell]) return;
-
-      worksheet[cell].z = '"L"#,##0.00';
-    });
-    const actualFileName = fileName || `Transacciones_${format(new Date(), 'yyyy-MM-dd')}`;
+    const actualFileName = fileName || `Control de Gastos ${format(new Date(), 'MMMM yyyy')}`;
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Transacciones');
 
     if (Platform.OS === 'web') {
@@ -113,7 +185,7 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
     }
 
     return { success: true, message: 'Exportación completada' };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error al exportar Excel:', error);
     return { success: false, message: 'Error al exportar: ' + error.message };
   }
@@ -125,17 +197,17 @@ export const createImportTemplate = async () => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([IMPORT_TEMPLATE_HEADERS]);
     XLSX.utils.sheet_add_aoa(worksheet, [
-      ['income', '1000.00', '2023-01-01', 'Ejemplo de ingreso', 'Denly', '', '', '', ''],
-      ['expense', '500.00', '2023-01-02', 'Ejemplo de egreso', 'El Paraiso', '', '', '', ''],
-      ['CLOSING', '2500.00', '2023-01-03', '', 'Denly', '', '5', '2023-01-01', '2023-01-15'],
-      ['SUPPLIER', '1200.00', '2023-01-04', '', 'El Paraiso', 'Pollo Rey', '', '', ''],
-      ['SALARY', '800.00', '2023-01-05', 'Pago de salario', 'Denly', '', '', '', '']
+      ['Ingreso', '1,000.00', '2023-01-01', 'Ejemplo de ingreso', 'Denly', '', '', '', ''],
+      ['Egreso', '500.00', '2023-01-02', 'Ejemplo de egreso', 'El Paraiso', '', '', '', ''],
+      ['Cierre', '2,500.00', '2023-01-03', '', 'Denly', '', '5', '2023-01-01', '2023-01-15'],
+      ['Proveedor', '1,200.00', '2023-01-04', '', 'El Paraiso', 'Pollo Rey', '', '', ''],
+      ['Salario', '800.00', '2023-01-05', 'Pago de salario', 'Denly', '', '', '', '']
     ], { origin: 1 });
 
     // Ajustar el ancho de las columnas
     worksheet['!cols'] = [
       { wch: 15 },  // Tipo
-      { wch: 12 },  // Monto
+      { wch: 15 },  // Monto
       { wch: 12 },  // Fecha
       { wch: 30 },  // Descripción
       { wch: 15 },  // Local
@@ -187,171 +259,296 @@ export const createImportTemplate = async () => {
     }
 
     return { success: true, message: 'Plantilla creada con éxito' };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error al crear plantilla:', error);
     return { success: false, message: 'Error al crear plantilla: ' + error.message };
   }
 };
 
-// Función para importar datos desde Excel
-export const importFromExcel = async (apiUrl: string) => {
-  try {
-    const processSpecialTransactions = async (
-      transactions: any[],
-      apiUrl: string
-    ): Promise<{ imported: number, errors: string[] }> => {
-      let imported = 0;
-      const errors: string[] = [];
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
 
-      for (const transaction of transactions) {
+// Función para validar los datos importados
+const validateImportData = (data: Record<string, unknown>[]): ValidationResult => {
+  if (!data || data.length === 0) {
+    return { valid: false, errors: ['El archivo está vacío o no tiene datos'] };
+  }
+
+  const errors: string[] = [];
+  const requiredColumns = ['Tipo', 'Monto', 'Fecha', 'Local'];
+  const firstRow = data[0];
+  for (const column of requiredColumns) {
+    if (!(column in firstRow)) {
+      errors.push(`Falta la columna requerida: ${column}`);
+    }
+  }
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+
+  data.forEach((row, index) => {
+    const rowNum = index + 1;
+    const typeValue = row['Tipo'] as string | undefined;
+    if (!typeValue) {
+      errors.push(`Fila ${rowNum}: El tipo está vacío`);
+    } else {
+      const normalizedType = normalizeTransactionType(typeValue);
+      if (!normalizedType || !['income', 'expense', 'CLOSING', 'SUPPLIER', 'SALARY'].includes(normalizedType)) {
+        errors.push(`Fila ${rowNum}: El tipo "${typeValue}" no es reconocido. Valores aceptados: Ingreso, Egreso, Cierre, Proveedor, Salario`);
+      }
+    }
+    const amount = row['Monto'];
+    if (amount === undefined || amount === null || amount === '') {
+      errors.push(`Fila ${rowNum}: El monto está vacío`);
+    } else {
+      try {
+        const normalizedAmount = normalizeAmount(amount);
+        if (normalizedAmount === 0 && String(amount).trim() !== '0') {
+          errors.push(`Fila ${rowNum}: El monto "${amount}" no es un número válido`);
+        }
+      } catch (e) {
+        errors.push(`Fila ${rowNum}: El monto "${amount}" no es un número válido`);
+      }
+    }
+    const dateValue = row['Fecha'] as string | undefined;
+    if (!dateValue) {
+      errors.push(`Fila ${rowNum}: La fecha está vacía`);
+    } else {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(dateValue)) {
         try {
-          let endpoint = '';
-
-          if (transaction.type === 'income' || transaction.type === 'expense') {
-            endpoint = `${apiUrl}/transactions`;
-          } else if (transaction.type === 'CLOSING') {
-            endpoint = `${apiUrl}/api/forms/closing-deposits`;
-          } else if (transaction.type === 'SUPPLIER') {
-            endpoint = `${apiUrl}/api/forms/supplier-payments`;
-          } else if (transaction.type === 'SALARY') {
-            endpoint = `${apiUrl}/api/forms/salary-payments`;
-          } else {
-            errors.push(`Tipo desconocido: ${transaction.type}`);
-            continue;
+          const date = new Date(dateValue);
+          if (isNaN(date.getTime())) {
+            errors.push(`Fila ${rowNum}: La fecha "${dateValue}" no tiene un formato válido. Use YYYY-MM-DD`);
           }
-
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(transaction),
-          });
-
-          if (response.ok) {
-            imported++;
-          } else {
-            const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
-            errors.push(`Error en ${transaction.type}: ${errorData.message || response.statusText}`);
-          }
-        } catch (error) {
-          errors.push(`Error al procesar ${transaction.type}: ${error.message}`);
+        } catch (e) {
+          errors.push(`Fila ${rowNum}: La fecha "${dateValue}" no tiene un formato válido. Use YYYY-MM-DD`);
         }
       }
+    }
 
-      return { imported, errors };
-    };
+    const localValue = row['Local'] as string | undefined;
+    if (!localValue) {
+      errors.push(`Fila ${rowNum}: El local está vacío`);
+    } else {
+      const normalizedLocal = String(localValue).trim().toLowerCase();
+      if (normalizedLocal !== 'denly' && normalizedLocal !== 'el paraiso' && normalizedLocal !== 'paraiso') {
+        errors.push(`Fila ${rowNum}: El local "${localValue}" no es válido. Debe ser "Denly" o "El Paraiso"`);
+      }
+    }
 
-    const processTransactionsForImport = (jsonData: any[]): any[] => {
-      return jsonData.map((row: any) => {
-        let storeId;
-        if (row['Local'] === 'Denly') {
-          storeId = 1;
-        } else if (row['Local'] === 'El Paraiso') {
-          storeId = 2;
+    if (!typeValue) return;
+    
+    const normalizedType = normalizeTransactionType(typeValue);
+    if (normalizedType === 'CLOSING') {
+      const periodoInicio = row['PeriodoInicio'] as string | undefined;
+      if (periodoInicio) {
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(periodoInicio)) {
+          try {
+            const date = new Date(periodoInicio);
+            if (isNaN(date.getTime())) {
+              errors.push(`Fila ${rowNum}: El periodo inicio "${periodoInicio}" no tiene un formato válido. Use YYYY-MM-DD`);
+            }
+          } catch (e) {
+            errors.push(`Fila ${rowNum}: El periodo inicio "${periodoInicio}" no tiene un formato válido. Use YYYY-MM-DD`);
+          }
         }
+      }
+      
+      const periodoFin = row['PeriodoFin'] as string | undefined;
+      if (periodoFin) {
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(periodoFin)) {
+          try {
+            const date = new Date(periodoFin);
+            if (isNaN(date.getTime())) {
+              errors.push(`Fila ${rowNum}: El periodo fin "${periodoFin}" no tiene un formato válido. Use YYYY-MM-DD`);
+            }
+          } catch (e) {
+            errors.push(`Fila ${rowNum}: El periodo fin "${periodoFin}" no tiene un formato válido. Use YYYY-MM-DD`);
+          }
+        }
+      }
+      
+      const cierresCount = row['CierresCantidad'];
+      if (cierresCount !== undefined && cierresCount !== null && cierresCount !== '') {
+        const cierresValue = String(cierresCount).trim();
+        if (!/^\d+$/.test(cierresValue)) {
+          errors.push(`Fila ${rowNum}: La cantidad de cierres "${cierresCount}" debe ser un número entero`);
+        }
+      }
+    }
+  });
 
-        const baseTransaction = {
-          type: row['Tipo'],
-          amount: parseFloat(row['Monto'].toString()),
-          date: row['Fecha'],
+  return { valid: errors.length === 0, errors };
+};
+
+// Función para procesar transacciones para importación
+const processTransactionsForImport = (jsonData: Record<string, unknown>[]): Record<string, unknown>[] => {
+  return jsonData.map((row) => {
+    let storeId: number;
+    const localName = String(row['Local'] || '').trim();
+    
+    if (localName.toLowerCase() === 'denly') {
+      storeId = 1;
+    } else if (localName.toLowerCase() === 'el paraiso' || localName.toLowerCase() === 'paraiso') {
+      storeId = 2;
+    } else {
+      storeId = 1;
+    }
+
+    const typeValue = row['Tipo'] as string || '';
+    const typeKey = normalizeTransactionType(typeValue);
+    const amount = normalizeAmount(row['Monto']);
+
+    switch (typeKey) {
+      case 'CLOSING':
+        return {
+          type: typeKey,
+          amount: amount,
+          date: row['Fecha'] || '',
+          depositDate: row['Fecha'] || '',
+          description: '',
+          store: { id: storeId },
+          username: "default_user",
+          closingsCount: row['CierresCantidad'] ? parseInt(String(row['CierresCantidad']).trim()) : undefined,
+          periodStart: row['PeriodoInicio'] || undefined,
+          periodEnd: row['PeriodoFin'] || undefined
+        };
+
+      case 'SUPPLIER':
+        return {
+          type: typeKey,
+          amount: amount,
+          date: row['Fecha'] || '',
+          paymentDate: row['Fecha'] || '',
+          description: '', // Ignorar descripción para proveedores
+          store: { id: storeId },
+          username: "default_user",
+          supplier: row['Proveedor'] || undefined
+        };
+
+      case 'SALARY':
+        return {
+          type: typeKey,
+          amount: amount,
+          date: row['Fecha'] || '',
+          depositDate: row['Fecha'] || '',
+          description: row['Descripción'] || '',
+          store: { id: storeId },
+          username: "default_user"
+        };
+
+      case 'income':
+      case 'expense':
+      default:
+        return {
+          type: typeKey,
+          amount: amount,
+          date: row['Fecha'] || '',
           description: row['Descripción'] || '',
           store: { id: storeId }
         };
+    }
+  });
+};
 
-        switch (row['Tipo']) {
-          case 'CLOSING':
-            return {
-              ...baseTransaction,
-              username: "default_user",
-              closingsCount: row['CierresCantidad'] ? parseInt(row['CierresCantidad'].toString()) : undefined,
-              periodStart: row['PeriodoInicio'] || undefined,
-              periodEnd: row['PeriodoFin'] || undefined,
-              depositDate: row['Fecha']
-            };
+// Procesa transacciones especiales (envía a diferentes endpoints)
+const processSpecialTransactions = async (
+  transactions: Record<string, unknown>[],
+  apiUrl: string
+): Promise<{ imported: number, errors: string[] }> => {
+  let imported = 0;
+  const errors: string[] = [];
 
-          case 'SUPPLIER':
-            return {
-              ...baseTransaction,
-              username: "default_user",
-              supplier: row['Proveedor'] || undefined,
-              paymentDate: row['Fecha']
-            };
+  for (const transaction of transactions) {
+    try {
+      let endpoint = '';
+      const transactionType = transaction.type as string;
 
-          case 'SALARY':
-            return {
-              ...baseTransaction,
-              username: "default_user",
-              depositDate: row['Fecha']
-            };
-
-          default:
-            return baseTransaction;
-        }
-      });
-    };
-
-    const validateImportData = (data: any[]): boolean => {
-      if (!data || data.length === 0) return false;
-
-      const requiredColumns = ['Tipo', 'Monto', 'Fecha', 'Local'];
-      const firstRow = data[0];
-
-      for (const column of requiredColumns) {
-        if (!(column in firstRow)) return false;
-      }
-
-      for (const row of data) {
-        const validTypes = ['income', 'expense', 'CLOSING', 'SALARY', 'SUPPLIER'];
-        if (!validTypes.includes(row['Tipo'])) return false;
-
-        if (isNaN(parseFloat(row['Monto'].toString()))) return false;
-
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(row['Fecha'])) return false;
-
-        if (!['Denly', 'El Paraiso'].includes(row['Local'])) return false;
-
-        if (row['Tipo'] === 'CLOSING') {
-          if (row['PeriodoInicio'] && !dateRegex.test(row['PeriodoInicio'])) return false;
-          if (row['PeriodoFin'] && !dateRegex.test(row['PeriodoFin'])) return false;
-        }
-      }
-
-      return true;
-    };
-
-    const handleParsedExcelData = async (jsonData: any[]) => {
-      if (!validateImportData(jsonData)) {
-        return {
-          success: false,
-          message: 'El formato del archivo no es válido. Por favor use la plantilla proporcionada.'
-        };
-      }
-
-      const transactions = processTransactionsForImport(jsonData);
-      const result = await processSpecialTransactions(transactions, apiUrl);
-
-      if (result.imported === transactions.length) {
-        return {
-          success: true,
-          message: `Importación exitosa: ${result.imported} transacciones importadas`
-        };
-      } else if (result.imported > 0) {
-        return {
-          success: true,
-          message: `Importación parcial: ${result.imported} de ${transactions.length} transacciones importadas`,
-          details: { errors: result.errors }
-        };
+      if (transactionType === 'income' || transactionType === 'expense') {
+        endpoint = `${apiUrl}/transactions`;
+      } else if (transactionType === 'CLOSING') {
+        endpoint = `${apiUrl}/api/forms/closing-deposits`;
+      } else if (transactionType === 'SUPPLIER') {
+        endpoint = `${apiUrl}/api/forms/supplier-payments`;
+      } else if (transactionType === 'SALARY') {
+        endpoint = `${apiUrl}/api/forms/salary-payments`;
       } else {
-        return {
-          success: false,
-          message: 'No se pudo importar ninguna transacción',
-          details: { errors: result.errors }
-        };
+        errors.push(`Tipo desconocido: ${transactionType}`);
+        continue;
       }
-    };
 
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(transaction),
+      });
+
+      if (response.ok) {
+        imported++;
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
+        const errorMessage = typeof errorData === 'object' && errorData !== null && 'message' in errorData 
+          ? String(errorData.message) 
+          : 'Error desconocido';
+        const displayType = transactionType in TRANSACTION_LABELS ? TRANSACTION_LABELS[transactionType] : transactionType;
+        errors.push(`Error en ${displayType}: ${errorMessage}`);
+      }
+    } catch (error: any) {
+      const displayType = transaction.type && typeof transaction.type === 'string' && transaction.type in TRANSACTION_LABELS 
+        ? TRANSACTION_LABELS[transaction.type] 
+        : String(transaction.type);
+      errors.push(`Error al procesar ${displayType}: ${error.message}`);
+    }
+  }
+
+  return { imported, errors };
+};
+
+// Función para manejar datos Excel analizados
+const handleParsedExcelData = async (jsonData: Record<string, unknown>[], apiUrl: string) => {
+  const validation = validateImportData(jsonData);
+  
+  if (!validation.valid) {
+    return {
+      success: false,
+      message: 'El archivo contiene errores de formato',
+      details: { errors: validation.errors }
+    };
+  }
+
+  const transactions = processTransactionsForImport(jsonData);
+  const result = await processSpecialTransactions(transactions, apiUrl);
+
+  if (result.imported === transactions.length) {
+    return {
+      success: true,
+      message: `Importación exitosa: ${result.imported} transacciones importadas`
+    };
+  } else if (result.imported > 0) {
+    return {
+      success: true,
+      message: `Importación parcial: ${result.imported} de ${transactions.length} transacciones importadas`,
+      details: { errors: result.errors }
+    };
+  } else {
+    return {
+      success: false,
+      message: 'No se pudo importar ninguna transacción',
+      details: { errors: result.errors }
+    };
+  }
+};
+
+// Función principal para importar desde Excel
+export const importFromExcel = async (apiUrl: string) => {
+  try {
     if (Platform.OS === 'web') {
       return new Promise<{ success: boolean, message: string, details?: any }>((resolve) => {
         const input = document.createElement('input');
@@ -369,15 +566,23 @@ export const importFromExcel = async (apiUrl: string) => {
             const reader = new FileReader();
             reader.onload = async (event) => {
               try {
-                const data = event.target?.result;
+                if (!event.target || !event.target.result) {
+                  resolve({
+                    success: false,
+                    message: 'Error al leer el archivo: No se pudo cargar el contenido'
+                  });
+                  return;
+                }
+                
+                const data = event.target.result;
                 const workbook = XLSX.read(data, { type: 'binary' });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
-                const result = await handleParsedExcelData(jsonData);
+                const result = await handleParsedExcelData(jsonData, apiUrl);
                 resolve(result);
-              } catch (error) {
+              } catch (error: any) {
                 resolve({
                   success: false,
                   message: 'Error al procesar el archivo: ' + error.message
@@ -385,7 +590,7 @@ export const importFromExcel = async (apiUrl: string) => {
               }
             };
             reader.readAsBinaryString(file);
-          } catch (error) {
+          } catch (error: any) {
             resolve({
               success: false,
               message: 'Error al leer el archivo: ' + error.message
@@ -413,124 +618,12 @@ export const importFromExcel = async (apiUrl: string) => {
       const workbook = XLSX.read(fileContent, { type: 'base64' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
-      return await handleParsedExcelData(jsonData);
+      return await handleParsedExcelData(jsonData, apiUrl);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error en importación:', error);
     return { success: false, message: 'Error en la importación: ' + error.message };
   }
 };
-
-
-// Función para procesar los datos de transacciones para importación
-const processTransactionsForImport = (jsonData: any[]): any[] => {
-  return jsonData.map((row: any) => {
-    let storeId;
-    if (row['Local'] === 'Denly') {
-      storeId = 1;
-    } else if (row['Local'] === 'El Paraiso') {
-      storeId = 2;
-    }
-
-    const baseTransaction = {
-      type: row['Tipo'],
-      amount: parseFloat(row['Monto'].toString()),
-      date: row['Fecha'],
-      description: row['Descripción'] || '',
-      store: { id: storeId }
-    };
-
-    switch (row['Tipo']) {
-      case 'CLOSING':
-        return {
-          ...baseTransaction,
-          username: "default_user",
-          closingsCount: row['CierresCantidad'] ? parseInt(row['CierresCantidad'].toString()) : undefined,
-          periodStart: row['PeriodoInicio'] || undefined,
-          periodEnd: row['PeriodoFin'] || undefined,
-          depositDate: row['Fecha']
-        };
-
-      case 'SUPPLIER':
-        return {
-          ...baseTransaction,
-          username: "default_user",
-          supplier: row['Proveedor'] || undefined,
-          paymentDate: row['Fecha']
-        };
-
-      case 'SALARY':
-        return {
-          ...baseTransaction,
-          username: "default_user",
-          depositDate: row['Fecha']
-        };
-
-      default: // income o expense
-        return baseTransaction;
-    }
-  });
-};
-
-// Función para validar la estructura de los datos importados
-const validateImportData = (data: any[]): boolean => {
-  if (!data || data.length === 0) {
-    return false;
-  }
-
-  const requiredColumns = ['Tipo', 'Monto', 'Fecha', 'Local'];
-  const firstRow = data[0];
-
-  for (const column of requiredColumns) {
-    if (!(column in firstRow)) {
-      return false;
-    }
-  }
-
-  for (const row of data) {
-    // Validar tipos de transacción
-    const validTypes = ['income', 'expense', 'CLOSING', 'SALARY', 'SUPPLIER'];
-    if (!validTypes.includes(row['Tipo'])) {
-      return false;
-    }
-
-    // Validar el monto
-    if (isNaN(parseFloat(row['Monto'].toString()))) {
-      return false;
-    }
-
-    // Validar formato de fecha (YYYY-MM-DD)
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(row['Fecha'])) {
-      return false;
-    }
-
-    // Validar el local
-    if (!['Denly', 'El Paraiso'].includes(row['Local'])) {
-      return false;
-    }
-
-    // Validaciones específicas por tipo
-    switch (row['Tipo']) {
-      case 'CLOSING':
-        // Si se proporciona PeriodoInicio o PeriodoFin, verificar formato
-        if (row['PeriodoInicio'] && !dateRegex.test(row['PeriodoInicio'])) {
-          return false;
-        }
-        if (row['PeriodoFin'] && !dateRegex.test(row['PeriodoFin'])) {
-          return false;
-        }
-        break;
-
-      case 'SUPPLIER':
-        break;
-
-      default:
-        break;
-    }
-  }
-
-  return true;
-};  

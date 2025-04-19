@@ -22,23 +22,43 @@ import { format } from 'date-fns';
 import ResponsiveButton from '@/components/ui/responsiveButton';
 import { REACT_APP_API_URL } from '../config';
 import StoreSelector from '@/components/StoreSelector';
+import { formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
 
 // Versión básica corregida (sin validación)
 const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
-  const [formData, setFormData] = useState<any>({
+  const getCurrentFormattedDate = () => format(new Date(), 'yyyy-MM-dd');
+  const parseDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0);
+  };
+  
+  interface FormDataType {
+    type: string;
+    amount: string;
+    date: string;
+    description: string;
+    closingsCount: string;
+    periodStart: string;
+    periodEnd: string;
+    storeId: number;
+    supplier: string;
+    [key: string]: any;
+  }
+  
+  const [formData, setFormData] = useState<FormDataType>({
     // Campos para transacciones
     type: 'income',
     amount: '',
-    date: '',
+    date: getCurrentFormattedDate(),
     description: '',
     // Campos adicionales
     closingsCount: '',
     periodStart: '',
     periodEnd: '',
-    storeId: '',
+    storeId: 1,
     supplier: '',
   });
 
@@ -59,6 +79,15 @@ const DynamicFormScreen = () => {
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   const slideAnim = useState(new Animated.Value(-100))[0];
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    const today = new Date();
+    setFormData(prevData => ({
+      ...prevData,
+      date: getCurrentFormattedDate()
+    }));
+    
+  }, []);
 
   const showMessage = (type: 'success' | 'error', message: string) => {
     setMessage(message);
@@ -83,14 +112,16 @@ const DynamicFormScreen = () => {
   };
 
   const clearData = () => {
+    const currentDate = getCurrentFormattedDate();
+    
     handleInputChange('amount', '');
-    handleInputChange('date', '');
+    handleInputChange('date', currentDate);
     handleInputChange('description', '');
     handleInputChange('type', 'income');
     handleInputChange('closingsCount', '');
     handleInputChange('periodStart', '');
     handleInputChange('periodEnd', '');
-    handleInputChange('storeId', '');
+    handleInputChange('storeId', 1);
     handleInputChange('supplier', '');
     setDateRange({
       startDate: undefined,
@@ -100,16 +131,24 @@ const DynamicFormScreen = () => {
 
   const handleInputChange = (field: string, value: any) => {
     if (field === 'amount') {
-      const amountRegex = /^[0-9]*[.,]?[0-9]{0,2}$/;
-      if (!amountRegex.test(value)) {
-        showMessage('error', 'El monto debe ser un número válido (ej. 100.50).');
-        return;
+      if (value) {
+        const formattedValue = formatAmountInput(value);
+        setFormData((prevData: FormDataType) => ({
+          ...prevData,
+          [field]: formattedValue,
+        }));
+      } else {
+        setFormData((prevData: FormDataType) => ({
+          ...prevData,
+          [field]: '',
+        }));
       }
+    } else {
+      setFormData((prevData: FormDataType) => ({
+        ...prevData,
+        [field]: value,
+      }));
     }
-    setFormData((prevData: any) => ({
-      ...prevData,
-      [field]: value,
-    }));
     setErrors((prevErrors) => ({ ...prevErrors, [field]: false }));
   };
 
@@ -117,7 +156,7 @@ const DynamicFormScreen = () => {
   const handleDateConfirm = (params: { date: Date | undefined }) => {
     if (params.date) {
       const formattedDate = format(params.date, 'yyyy-MM-dd');
-      setFormData((prevData: any) => ({
+      setFormData((prevData: FormDataType) => ({
         ...prevData,
         [selectedDateField]: formattedDate,
       }));
@@ -139,7 +178,7 @@ const DynamicFormScreen = () => {
     
     if (startDate) {
       const formattedStartDate = format(startDate, 'yyyy-MM-dd');
-      setFormData((prevData: any) => ({
+      setFormData((prevData: FormDataType) => ({
         ...prevData,
         periodStart: formattedStartDate,
       }));
@@ -148,7 +187,7 @@ const DynamicFormScreen = () => {
     
     if (endDate) {
       const formattedEndDate = format(endDate, 'yyyy-MM-dd');
-      setFormData((prevData: any) => ({
+      setFormData((prevData: FormDataType) => ({
         ...prevData,
         periodEnd: formattedEndDate,
       }));
@@ -195,9 +234,12 @@ const DynamicFormScreen = () => {
 
     try {
       const url = formType === 'transaction' ? TRANSACTIONS_URL : `${BACKEND_URL}/${formType}`;
+      const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
+      const amount = parseFloat(amountValue);
+      
       const formToSend = {
         ...formData,
-        amount: parseFloat(formData.amount.replace(',', '.')),
+        amount: amount,
         store: { id: formData.storeId },
         username: "default_user",
         date: formData.date
@@ -604,7 +646,7 @@ const DynamicFormScreen = () => {
         onDismiss={() => setDatePickerVisible(false)}
         onConfirm={handleDateConfirm}
         locale="es"
-        date={undefined}
+        date={formData.date ? parseDate(formData.date) : undefined}
       />
 
       {/* Selector de rango de fechas (para depósitos de cierres) */}

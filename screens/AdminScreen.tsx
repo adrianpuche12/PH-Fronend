@@ -24,6 +24,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { REACT_APP_API_URL } from '../config';
 import { format, parseISO } from 'date-fns';
 import ExcelManager from '@/components/ExcelManager';
+import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   income:   'Ingreso',
@@ -57,8 +58,8 @@ interface Transaction {
 
 const ITEMS_PER_PAGE = 5;
 
-const CollapsibleBalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
+  const [isCollapsed, setIsCollapsed] = React.useState(true);
   const animatedHeight = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -106,24 +107,24 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: Transaction[] 
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color="#4CAF50" />
           <Text style={styles.balanceLabel}>Ingresos:</Text>
-          <Text style={styles.balanceValue}>{'L' + ingresos.toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>{formatCurrency(ingresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color="#F44336" />
           <Text style={styles.balanceLabel}>Egresos:</Text>
-          <Text style={styles.balanceValue}>{'L' + egresos.toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>{formatCurrency(egresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="calculator-variant" size={20} color="#2196F3" />
           <Text style={styles.balanceLabel}>Total:</Text>
-          <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{'L' + total.toFixed(2)}</Text>
+          <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{formatCurrency(total)}</Text>
         </View>
       </Animated.View>
     </Card>
   );
 };
 
-const BalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
+const BalanceCard = ({ transactions }: { transactions: any[] }) => {
   const ingresos = transactions
     .filter(tx => tx.type === 'CLOSING' || tx.type === 'income')
     .reduce((sum, tx) => sum + tx.amount, 0);
@@ -139,17 +140,17 @@ const BalanceCard = ({ transactions }: { transactions: Transaction[] }) => {
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="arrow-down-bold-circle-outline" size={20} color="#4CAF50" />
           <Text style={styles.balanceLabel}>Ingresos:</Text>
-          <Text style={styles.balanceValue}>{'L' + ingresos.toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>{formatCurrency(ingresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="arrow-up-bold-circle-outline" size={20} color="#F44336" />
           <Text style={styles.balanceLabel}>Egresos:</Text>
-          <Text style={styles.balanceValue}>{'L' + egresos.toFixed(2)}</Text>
+          <Text style={styles.balanceValue}>{formatCurrency(egresos)}</Text>
         </View>
         <View style={styles.balanceRow}>
           <MaterialCommunityIcons name="calculator-variant" size={20} color="#2196F3" />
           <Text style={styles.balanceLabel}>Total:</Text>
-          <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{'L' + total.toFixed(2)}</Text>
+          <Text style={[styles.balanceValue, { fontWeight: 'bold' }]}>{formatCurrency(total)}</Text>
         </View>
       </Card.Content>
     </Card>
@@ -544,7 +545,7 @@ const AdminScreen = () => {
 
   const handleSaveEdit = async () => {
     if (!editingTransaction) return;
-    const parsedAmount = parseFloat(newAmount);
+    const parsedAmount = parseFloat(newAmount.replace(/,/g, ''));
     if (isNaN(parsedAmount)) {
       Alert.alert('Error', 'Por favor ingrese un monto válido.');
       return;
@@ -661,7 +662,10 @@ const AdminScreen = () => {
             <TextInput
               label="Monto"
               value={newAmount}
-              onChangeText={setNewAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
               keyboardType="numeric"
               style={styles.modalInput}
             />
@@ -716,7 +720,10 @@ const AdminScreen = () => {
             <TextInput
               label="Monto"
               value={newAmount}
-              onChangeText={setNewAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
               keyboardType="numeric"
               style={styles.modalInput}
             />
@@ -749,7 +756,10 @@ const AdminScreen = () => {
             <TextInput
               label="Monto"
               value={newAmount}
-              onChangeText={setNewAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
               keyboardType="numeric"
               style={styles.modalInput}
             />
@@ -783,7 +793,10 @@ const AdminScreen = () => {
             <TextInput
               label="Monto"
               value={newAmount}
-              onChangeText={setNewAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
               keyboardType="numeric"
               style={styles.modalInput}
             />
@@ -816,7 +829,10 @@ const AdminScreen = () => {
             <TextInput
               label="Monto"
               value={newAmount}
-              onChangeText={setNewAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
               keyboardType="numeric"
               style={styles.modalInput}
             />
@@ -886,7 +902,7 @@ const AdminScreen = () => {
               </Text>
             </View>
             <Text style={styles.transactionAmount}>
-              {'L' + item.amount.toFixed(2)}
+              {formatCurrency(item.amount)}
             </Text>
           </View>
 

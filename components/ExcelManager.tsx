@@ -1,5 +1,4 @@
-// components/ExcelManager.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Modal, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { 
   Button, 
@@ -14,7 +13,8 @@ import {
 } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
-import { exportToExcel, createImportTemplate, importFromExcel } from '../utils/ExcelUtils';
+import { es } from 'date-fns/locale';
+import { exportToExcel, createImportTemplate, importFromExcel, TRANSACTION_LABELS } from '../utils/ExcelUtils';
 import { REACT_APP_API_URL } from '../config';
 
 interface ExcelManagerProps {
@@ -51,6 +51,22 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
   
   // Estados para mostrar documentación o guías
   const [showDocumentation, setShowDocumentation] = useState(false);
+  const [filteredCount, setFilteredCount] = useState(transactions.length);
+  useEffect(() => {
+    let count = transactions.length;
+    
+    if (dateRange.startDate && dateRange.endDate) {
+      const startDateStr = format(dateRange.startDate, 'yyyy-MM-dd');
+      const endDateStr = format(dateRange.endDate, 'yyyy-MM-dd');
+      
+      count = transactions.filter(tx => {
+        const txDate = tx.date?.split('T')[0] || '';
+        return txDate >= startDateStr && txDate <= endDateStr;
+      }).length;
+    }
+    
+    setFilteredCount(count);
+  }, [dateRange, transactions]);
 
   // Función para exportar transacciones
   const handleExport = async () => {
@@ -68,10 +84,45 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
       });
     }
     
-    // Generar nombre de archivo con rango de fechas si aplica
-    let fileName = 'Transacciones';
+    let fileName;
+  
     if (dateRange.startDate && dateRange.endDate) {
-      fileName = `Transacciones_${format(dateRange.startDate, 'yyyyMMdd')}_${format(dateRange.endDate, 'yyyyMMdd')}`;
+      if (dateRange.startDate.getMonth() !== dateRange.endDate.getMonth() || 
+          dateRange.startDate.getFullYear() !== dateRange.endDate.getFullYear()) {
+        const startMonth = format(dateRange.startDate, 'MMM', { locale: es });
+        const endMonth = format(dateRange.endDate, 'MMM', { locale: es });
+        const startDay = format(dateRange.startDate, 'd');
+        const endDay = format(dateRange.endDate, 'd');
+        const year = format(dateRange.endDate, 'yyyy');
+        
+        fileName = `Control de Gastos Del ${startDay} ${startMonth} al ${endDay} ${endMonth} ${year}`;
+      } 
+      else if (dateRange.startDate.getDate() !== dateRange.endDate.getDate()) {
+        const month = format(dateRange.startDate, 'MMMM', { locale: es });
+        const startDay = format(dateRange.startDate, 'd');
+        const endDay = format(dateRange.endDate, 'd');
+        const year = format(dateRange.endDate, 'yyyy');
+        
+        fileName = `Control de Gastos Del ${startDay} al ${endDay} ${month} ${year}`;
+      }
+      else {
+        const month = format(dateRange.startDate, 'MMMM', { locale: es });
+        const day = format(dateRange.startDate, 'd');
+        const year = format(dateRange.startDate, 'yyyy');
+        
+        fileName = `Control de Gastos Día ${day} ${month} ${year}`;
+      }
+      
+      fileName = fileName.replace(/\b\w+\b/g, function(txt) {
+        if (txt.length > 2 && !['del', 'al'].includes(txt.toLowerCase())) {
+          return txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase();
+        }
+        return txt;
+      });
+      
+    } else {
+      const currentMonth = format(new Date(), 'MMMM yyyy', { locale: es });
+      fileName = `Control de Gastos ${currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1)}`;
     }
     
     const exportResult = await exportToExcel(dataToExport, fileName);
@@ -80,7 +131,6 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
     setLoading(false);
   };
 
-  // Función para descargar plantilla de importación
   const handleDownloadTemplate = async () => {
     setLoading(true);
     const templateResult = await createImportTemplate();
@@ -181,7 +231,7 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
                     icon="microsoft-excel"
                     disabled={loading}
                   >
-                    Exportar {transactions.length} transacciones
+                    Exportar {filteredCount} transacciones
                   </Button>
                 </Card.Content>
               </Card>
@@ -254,6 +304,14 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
               <Dialog.Title>{result?.success ? '✅ Éxito' : '❌ Error'}</Dialog.Title>
               <Dialog.Content>
                 <Paragraph>{result?.message}</Paragraph>
+                {result?.details?.errors && result.details.errors.length > 0 && (
+                  <View style={styles.errorsList}>
+                    <Text style={styles.errorTitle}>Detalles de errores:</Text>
+                    {result.details.errors.map((error: string, index: number) => (
+                      <Text key={index} style={styles.errorItem}>• {error}</Text>
+                    ))}
+                  </View>
+                )}
               </Dialog.Content>
               <Dialog.Actions>
                 <Button onPress={() => setShowResult(false)}>Cerrar</Button>
@@ -283,15 +341,15 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
                   {/* Fila Tipo */}
                   <View style={styles.tableRow}>
                     <Text style={styles.tableCell}>Tipo</Text>
-                    <Text style={styles.tableCell}>Texto: "income", "expense", "CLOSING", "SALARY" o "SUPPLIER"</Text>
-                    <Text style={styles.tableCell}>CLOSING</Text>
+                    <Text style={styles.tableCell}>Texto: "Ingreso", "Egreso", "Cierre", "Salario" o "Proveedor"</Text>
+                    <Text style={styles.tableCell}>Cierre</Text>
                   </View>
                   
                   {/* Fila Monto */}
                   <View style={styles.tableRow}>
                     <Text style={styles.tableCell}>Monto</Text>
-                    <Text style={styles.tableCell}>Número decimal</Text>
-                    <Text style={styles.tableCell}>1250.50</Text>
+                    <Text style={styles.tableCell}>Número con formato 1,234.56</Text>
+                    <Text style={styles.tableCell}>1,250.50</Text>
                   </View>
                   
                   {/* Fila Fecha */}
@@ -318,50 +376,50 @@ const ExcelManager: React.FC<ExcelManagerProps> = ({
                   {/* Nueva fila para Proveedor */}
                   <View style={styles.tableRow}>
                     <Text style={styles.tableCell}>Proveedor</Text>
-                    <Text style={styles.tableCell}>Texto (opcional, para tipo SUPPLIER)</Text>
+                    <Text style={styles.tableCell}>Texto (opcional, para tipo Proveedor)</Text>
                     <Text style={styles.tableCell}>Pollo Rey</Text>
                   </View>
                   
                   {/* Nueva fila para CierresCantidad */}
                   <View style={styles.tableRow}>
                     <Text style={styles.tableCell}>CierresCantidad</Text>
-                    <Text style={styles.tableCell}>Número (opcional, para tipo CLOSING)</Text>
+                    <Text style={styles.tableCell}>Número (opcional, para tipo Cierre)</Text>
                     <Text style={styles.tableCell}>5</Text>
                   </View>
                   
                   {/* Nueva fila para PeriodoInicio */}
                   <View style={styles.tableRow}>
                     <Text style={styles.tableCell}>PeriodoInicio</Text>
-                    <Text style={styles.tableCell}>YYYY-MM-DD (opcional, para tipo CLOSING)</Text>
+                    <Text style={styles.tableCell}>YYYY-MM-DD (opcional, para tipo Cierre)</Text>
                     <Text style={styles.tableCell}>2023-01-01</Text>
                   </View>
                   
                   {/* Nueva fila para PeriodoFin */}
                   <View style={styles.tableRow}>
                     <Text style={styles.tableCell}>PeriodoFin</Text>
-                    <Text style={styles.tableCell}>YYYY-MM-DD (opcional, para tipo CLOSING)</Text>
+                    <Text style={styles.tableCell}>YYYY-MM-DD (opcional, para tipo Cierre)</Text>
                     <Text style={styles.tableCell}>2023-01-15</Text>
                   </View>
                   
                   <Text style={[styles.docTitle, {marginTop: 20}]}>Campos por tipo de operación:</Text>
                   
-                  <Text style={styles.docSubtitle}>Para tipo "income" o "expense":</Text>
+                  <Text style={styles.docSubtitle}>Para tipo "Ingreso" o "Egreso":</Text>
                   <Text style={styles.docText}>• Tipo, Monto, Fecha, Descripción, Local</Text>
                   
-                  <Text style={styles.docSubtitle}>Para tipo "CLOSING":</Text>
+                  <Text style={styles.docSubtitle}>Para tipo "Cierre":</Text>
                   <Text style={styles.docText}>• Tipo, Monto, Fecha, Local, CierresCantidad, PeriodoInicio, PeriodoFin</Text>
                   
-                  <Text style={styles.docSubtitle}>Para tipo "SUPPLIER":</Text>
+                  <Text style={styles.docSubtitle}>Para tipo "Proveedor":</Text>
                   <Text style={styles.docText}>• Tipo, Monto, Fecha, Local, Proveedor</Text>
                   
-                  <Text style={styles.docSubtitle}>Para tipo "SALARY":</Text>
+                  <Text style={styles.docSubtitle}>Para tipo "Salario":</Text>
                   <Text style={styles.docText}>• Tipo, Monto, Fecha, Descripción, Local</Text>
                   
                   <Text style={[styles.docTitle, {marginTop: 20}]}>Recomendaciones:</Text>
                   <Text style={styles.docText}>• Descarga la plantilla para asegurar el formato correcto</Text>
                   <Text style={styles.docText}>• Evita cambiar el orden o nombre de las columnas</Text>
                   <Text style={styles.docText}>• Verifica que las fechas estén en formato YYYY-MM-DD</Text>
-                  <Text style={styles.docText}>• Asegúrate de que los montos usen punto como separador decimal</Text>
+                  <Text style={styles.docText}>• Los montos pueden incluir comas como separadores de miles</Text>
                 </ScrollView>
               </Dialog.ScrollArea>
               <Dialog.Actions>
@@ -507,6 +565,22 @@ const styles = StyleSheet.create({
   tableCell: {
     flex: 1,
     textAlign: 'center',
+    color: '#555',
+  },
+  errorsList: {
+    marginTop: 10,
+    backgroundColor: '#f8f8f8',
+    padding: 10,
+    borderRadius: 5,
+  },
+  errorTitle: {
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#d32f2f',
+  },
+  errorItem: {
+    fontSize: 12,
+    marginBottom: 3,
     color: '#555',
   },
 });
