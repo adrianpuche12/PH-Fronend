@@ -199,7 +199,8 @@ const DynamicFormScreen = () => {
         ...formData,
         amount: parseFloat(formData.amount.replace(',', '.')),
         store: { id: formData.storeId },
-        username: "default_user" 
+        username: "default_user",
+        date: formData.date
       };
 
 
@@ -424,6 +425,24 @@ const DynamicFormScreen = () => {
                 theme={{ colors: { primary: '#D4A72B' } }}
               />
             </View>
+            <View style={styles.inputContainer}>
+              <TextInput
+                label="Fecha"
+                value={formData.date}
+                mode="outlined"
+                onFocus={() => {
+                  setSelectedDateField('date');
+                  setDatePickerVisible(true);
+                }}
+                style={styles.input}
+                error={errors.date}
+                left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
+                outlineColor="#DDDDDD"
+                activeOutlineColor="#D4A72B"
+                theme={{ colors: { primary: '#D4A72B' } }}
+              />
+            </View>
+
           </>
         );
       case 'salary-payments':
@@ -460,6 +479,23 @@ const DynamicFormScreen = () => {
                 style={styles.input}
                 error={errors.amount}
                 left={<TextInput.Icon icon="cash-multiple" color="#D4A72B" />}
+                outlineColor="#DDDDDD"
+                activeOutlineColor="#D4A72B"
+                theme={{ colors: { primary: '#D4A72B' } }}
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <TextInput
+                label="Fecha"
+                value={formData.date}
+                mode="outlined"
+                onFocus={() => {
+                  setSelectedDateField('date');
+                  setDatePickerVisible(true);
+                }}
+                style={styles.input}
+                error={errors.date}
+                left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
                 outlineColor="#DDDDDD"
                 activeOutlineColor="#D4A72B"
                 theme={{ colors: { primary: '#D4A72B' } }}
