@@ -201,9 +201,10 @@ const LoginScreen = () => {
       </View>
       
       <Card style={styles.card}>
-        <Card.Content>
+      <Card.Content>
+        <View style={styles.formWrapper}>
           <Title style={styles.cardTitle}>Iniciar Sesión</Title>
-          
+
           <View style={styles.inputContainer}>
             <TextInput
               label="Usuario"
@@ -255,12 +256,14 @@ const LoginScreen = () => {
             loading={isLoading}
             disabled={isLoading}
             labelStyle={styles.buttonText}
-            buttonColor="#2196F3" // Standard blue button color
+            buttonColor="#2196F3"
           >
             {isLoading ? 'INICIANDO SESIÓN...' : 'INICIAR SESIÓN'}
           </Button>
-        </Card.Content>
-      </Card>
+        </View>
+      </Card.Content>
+    </Card>
+
     </View>
   );
 };
@@ -334,7 +337,12 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: 'bold',
-  }
+  },
+  formWrapper: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
 });
 
 export default LoginScreen;

@@ -180,6 +180,8 @@ const CompactDateFilters = ({
   setSelectedDateInput: (input: 'start' | 'end') => void;
   onExcelPress: () => void;
 }) => {
+  const { width: screenWidth } = useWindowDimensions();
+  const isLargeScreen = screenWidth >= 768;
   const formatDate = (date?: Date | string) => {
     if (!date) return '';
     try {
@@ -194,8 +196,10 @@ const CompactDateFilters = ({
   };
 
   return (
-    <View style={styles.compactFiltersContainer}>
-      <View style={styles.compactDateInputs}>
+  <View style={styles.compactFiltersContainer}>
+    <View style={isLargeScreen ? styles.filtersRowWeb : undefined}>
+      <View style={isLargeScreen ? styles.inputGroupWeb : styles.compactDateInputs}>
+        {/* Fechas */}
         <TextInput
           label="Desde"
           value={formatDate(startDate)}
@@ -228,8 +232,8 @@ const CompactDateFilters = ({
         />
       </View>
 
-      {/* Filtro de local compacto */}
-      <View style={styles.storeFilterCompact}>
+      {/* Selector de tienda */}
+      <View style={isLargeScreen ? styles.storeFilterWeb : styles.storeFilterCompact}>
         <SegmentedButtons
           value={selectedStore?.toString() || 'all'}
           onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
@@ -242,7 +246,8 @@ const CompactDateFilters = ({
         />
       </View>
 
-      <View style={styles.compactButtonsRow}>
+      {/* Botones */}
+      <View style={isLargeScreen ? styles.buttonGroupWeb : styles.compactButtonsRow}>
         {(startDate || endDate || selectedStore) && (
           <Button
             mode="outlined"
@@ -280,6 +285,7 @@ const CompactDateFilters = ({
         </Button>
       </View>
     </View>
+  </View>
   );
 };
 
@@ -1079,94 +1085,24 @@ const AdminScreen = () => {
         </View>
       ) : (
         // Para pantallas grandes, utilizamos el diseño original
-        <View style={headerContainerStyle}>
-          <View style={dateInputsContainerStyle}>
-            <View style={styles.filtersContainer}>
-              <View style={styles.dateFiltersRow}>
-                <TextInput
-                  label="Fecha Inicio"
-                  value={formatDate(startDate)}
-                  mode="outlined"
-                  style={styles.dateInput}
-                  onFocus={() => {
-                    setSelectedDateInput('start');
-                    setDatePickerOpen(true);
-                  }}
-                  left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-                  outlineColor="#DDDDDD"
-                  activeOutlineColor="#D4A72B"
-                  theme={{ colors: { primary: '#D4A72B' } }}
-                />
-
-                <TextInput
-                  label="Fecha Fin"
-                  value={formatDate(endDate)}
-                  mode="outlined"
-                  style={styles.dateInput}
-                  onFocus={() => {
-                    setSelectedDateInput('end');
-                    setDatePickerOpen(true);
-                  }}
-                  left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
-                  outlineColor="#DDDDDD"
-                  activeOutlineColor="#D4A72B"
-                  theme={{ colors: { primary: '#D4A72B' } }}
-                />
-              </View>
-
-              {/* Filtro por local */}
-              <View style={styles.storeFilterContainer}>
-                <Text style={styles.filterLabel}>Filtrar por Local:</Text>
-                <SegmentedButtons
-                  value={selectedStore?.toString() || 'all'}
-                  onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
-                  buttons={[
-                    { value: 'all', label: 'Todos' },
-                    { value: '1', label: 'Danli' },
-                    { value: '2', label: 'El Paraiso' },
-                  ]}
-                  style={styles.storeSelector}
-                />
-              </View>
-
-              <View style={styles.buttonGroup}>
-                {(startDate || endDate || selectedStore) && (
-                  <Button
-                    mode="outlined"
-                    onPress={() => {
-                      setStartDate(undefined);
-                      setEndDate(undefined);
-                      setSelectedStore(null);
-                    }}
-                    style={styles.clearButton}
-                    color="#D4A72B"
-                  >
-                    Limpiar Filtros
-                  </Button>
-                )}
-                <Button
-                  mode="contained"
-                  onPress={() => fetchData(startDate, endDate, selectedStore)}
-                  style={styles.refreshButton}
-                  icon="refresh"
-                  buttonColor="#2196F3"
-                >
-                  Actualizar
-                </Button>
-                <Button
-                  mode="contained"
-                  onPress={() => setShowExcelManager(true)}
-                  style={styles.excelButton}
-                  icon="microsoft-excel"
-                  buttonColor="#28a745"
-                >
-                  Gestión Excel
-                </Button>
-              </View>
-            </View>
-          </View>
-          <BalanceCard transactions={transactions} />
-        </View>
+        <View style={styles.controlsContainer}>
+        {/* Filtros horizontales */}
+        <CompactDateFilters
+          startDate={startDate}
+          endDate={endDate}
+          selectedStore={selectedStore}
+          setStartDate={setStartDate}
+          setEndDate={setEndDate}
+          setSelectedStore={setSelectedStore}
+          fetchData={fetchData}
+          setDatePickerOpen={setDatePickerOpen}
+          setSelectedDateInput={setSelectedDateInput}
+          onExcelPress={() => setShowExcelManager(true)}
+        />
+        
+        {/* Balance General desplegable */}
+        <CollapsibleBalanceCard transactions={transactions} />
+      </View>
       )}
 
       {loading ? (
@@ -1350,6 +1286,10 @@ const styles = StyleSheet.create({
   },
 
   // Estilos para la vista móvil (nuevos, compactos)
+  controlsContainer: {
+    padding: 10,
+    marginBottom: 5,
+  },
   mobileControlsContainer: {
     padding: 10,
     marginBottom: 5,
@@ -1371,6 +1311,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
     height: 50,
     backgroundColor: '#fff',
+    fontSize: 15,
+    minWidth: 130,
   },
   compactButtonsRow: {
     flexDirection: 'row',
@@ -1406,6 +1348,36 @@ const styles = StyleSheet.create({
   filtersContainer: {
     width: '100%',
   },
+  storeFilterWeb: {
+    flex: 2,
+    marginHorizontal: 10,
+  },
+  filtersRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  filtersRowWeb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  inputGroupWeb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 3,
+    gap: 10,
+  },
+  buttonGroupWeb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flex: 2,
+    gap: 10,
+  },
   dateFiltersRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1421,7 +1393,6 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   storeSelectorCompact: {
-    marginBottom: 5,
     transform: [{ scale: 0.95 }],
   },
   buttonGroup: {
@@ -1478,7 +1449,7 @@ const styles = StyleSheet.create({
 
   // Estilos para la lista de transacciones
   scrollView: {
-    padding: 16,
+    padding: 0,
     flex: 1,
   },
   transactionCard: {
