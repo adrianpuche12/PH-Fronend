@@ -10,7 +10,7 @@ interface StoreSelectorProps {
 
 const StoreSelector: React.FC<StoreSelectorProps> = ({ selectedStore, onStoreChange, style }) => {
   const stores = [
-    { id: 1, name: 'Denly' },
+    { id: 1, name: 'Danli' },
     { id: 2, name: 'El Paraiso' },
   ];
 

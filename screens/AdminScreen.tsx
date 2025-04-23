@@ -235,7 +235,7 @@ const CompactDateFilters = ({
           onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
           buttons={[
             { value: 'all', label: 'Todos' },
-            { value: '1', label: 'Denly' },
+            { value: '1', label: 'Danli' },
             { value: '2', label: 'El Paraiso' },
           ]}
           style={styles.storeSelectorCompact}
@@ -396,7 +396,7 @@ const AdminScreen = () => {
               const txDateStr = typeof tx.date === 'string'
                 ? tx.date.split('T')[0]
                 : format(new Date(tx.date), 'yyyy-MM-dd');
-
+  
               return txDateStr >= startDateStr && txDateStr <= endDateStr;
             } catch (error) {
               console.warn('Error al procesar fecha:', tx.date, error);
@@ -407,7 +407,16 @@ const AdminScreen = () => {
       }
       // Se unen ambos arreglos
       const merged = [...operationsData, ...transactionsData];
-      setTransactions(merged);
+      const sortedTransactions = merged.sort((a, b) => {
+        if (!a.date) return 1;
+        if (!b.date) return -1;
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+    
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      setTransactions(sortedTransactions);
       setCurrentPage(1);
     } catch (err) {
       console.error('Error al cargar las transacciones:', err);
@@ -646,7 +655,7 @@ const AdminScreen = () => {
           value={newStoreId.toString()}
           onValueChange={(value) => setNewStoreId(Number(value))}
           buttons={[
-            { value: '1', label: 'Denly' },
+            { value: '1', label: 'Danli' },
             { value: '2', label: 'El Paraiso' },
           ]}
           style={styles.storeSelector}
@@ -929,9 +938,9 @@ const AdminScreen = () => {
                   item.store?.name ||
                   item.storeName ||
                   (item.store?.id ?
-                    (item.store.id === 1 ? 'Denly' : 'El Paraiso') :
+                    (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
                     (item.storeId ?
-                      (item.storeId === 1 ? 'Denly' : 'El Paraiso') :
+                      (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
                       'No asignado'
                     )
                   )
@@ -1113,7 +1122,7 @@ const AdminScreen = () => {
                   onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
                   buttons={[
                     { value: 'all', label: 'Todos' },
-                    { value: '1', label: 'Denly' },
+                    { value: '1', label: 'Danli' },
                     { value: '2', label: 'El Paraiso' },
                   ]}
                   style={styles.storeSelector}

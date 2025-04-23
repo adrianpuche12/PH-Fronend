@@ -165,7 +165,7 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
                 value={selectedStore.toString()}
                 onValueChange={(value) => setSelectedStore(Number(value))}
                 buttons={[
-                  { value: '1', label: 'Denly' },
+                  { value: '1', label: 'Danli' },
                   { value: '2', label: 'El Paraiso' },
                 ]}
                 style={styles.storeSelector}
@@ -221,7 +221,7 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
             <Text style={styles.title}>Informacion a enviar</Text>
             <View>
               <Text style={styles.modalText}>Tipo: {type}</Text>
-              <Text style={styles.modalText}>Local: {selectedStore === 1 ? 'Denly' : 'El Paraiso'}</Text>
+              <Text style={styles.modalText}>Local: {selectedStore === 1 ? 'Danli' : 'El Paraiso'}</Text>
               <Text style={styles.modalText}>Monto: {amount}</Text>
               <Text style={styles.modalText}>Fecha: {date ? date.toISOString().split('T')[0] : ''}</Text>
               <Text style={styles.modalText}>Descripción: {description}</Text>

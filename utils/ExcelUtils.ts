@@ -106,7 +106,7 @@ export const exportToExcel = async (transactions: Transaction[], fileName?: stri
     const workbook = XLSX.utils.book_new();
     const formattedData = transactions.map(tx => {
       const storeName = tx.store?.name ||
-        (tx.storeId === 1 ? 'Denly' :
+        (tx.storeId === 1 ? 'Danli' :
           tx.storeId === 2 ? 'El Paraiso' : 'No asignado');
 
       const typeLabel = tx.type in TRANSACTION_LABELS ? TRANSACTION_LABELS[tx.type] : tx.type;
@@ -197,11 +197,11 @@ export const createImportTemplate = async () => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet([IMPORT_TEMPLATE_HEADERS]);
     XLSX.utils.sheet_add_aoa(worksheet, [
-      ['Ingreso', '1,000.00', '2023-01-01', 'Ejemplo de ingreso', 'Denly', '', '', '', ''],
+      ['Ingreso', '1,000.00', '2023-01-01', 'Ejemplo de ingreso', 'Danli', '', '', '', ''],
       ['Egreso', '500.00', '2023-01-02', 'Ejemplo de egreso', 'El Paraiso', '', '', '', ''],
-      ['Cierre', '2,500.00', '2023-01-03', '', 'Denly', '', '5', '2023-01-01', '2023-01-15'],
+      ['Cierre', '2,500.00', '2023-01-03', '', 'Danli', '', '5', '2023-01-01', '2023-01-15'],
       ['Proveedor', '1,200.00', '2023-01-04', '', 'El Paraiso', 'Pollo Rey', '', '', ''],
-      ['Salario', '800.00', '2023-01-05', 'Pago de salario', 'Denly', '', '', '', '']
+      ['Salario', '800.00', '2023-01-05', 'Pago de salario', 'Danli', '', '', '', '']
     ], { origin: 1 });
 
     // Ajustar el ancho de las columnas
@@ -334,8 +334,8 @@ const validateImportData = (data: Record<string, unknown>[]): ValidationResult =
       errors.push(`Fila ${rowNum}: El local está vacío`);
     } else {
       const normalizedLocal = String(localValue).trim().toLowerCase();
-      if (normalizedLocal !== 'denly' && normalizedLocal !== 'el paraiso' && normalizedLocal !== 'paraiso') {
-        errors.push(`Fila ${rowNum}: El local "${localValue}" no es válido. Debe ser "Denly" o "El Paraiso"`);
+      if (normalizedLocal !== 'Danli' && normalizedLocal !== 'el paraiso' && normalizedLocal !== 'paraiso') {
+        errors.push(`Fila ${rowNum}: El local "${localValue}" no es válido. Debe ser "Danli" o "El Paraiso"`);
       }
     }
 
@@ -392,7 +392,7 @@ const processTransactionsForImport = (jsonData: Record<string, unknown>[]): Reco
     let storeId: number;
     const localName = String(row['Local'] || '').trim();
     
-    if (localName.toLowerCase() === 'denly') {
+    if (localName.toLowerCase() === 'danli') {
       storeId = 1;
     } else if (localName.toLowerCase() === 'el paraiso' || localName.toLowerCase() === 'paraiso') {
       storeId = 2;

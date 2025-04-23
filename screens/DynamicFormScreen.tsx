@@ -211,9 +211,11 @@ const DynamicFormScreen = () => {
     } else if (formType === 'supplier-payments') {
       if (!formData.amount) newErrors.amount = true;
       if (!formData.supplier) newErrors.supplier = true;
+      if (!formData.date) newErrors.date = true;
     } else if (formType === 'salary-payments') {
       if (!formData.amount) newErrors.amount = true;
       if (!formData.description) newErrors.description = true;
+      if (!formData.date) newErrors.date = true;
     }
 
     setErrors(newErrors);
@@ -242,7 +244,10 @@ const DynamicFormScreen = () => {
         amount: amount,
         store: { id: formData.storeId },
         username: "default_user",
-        date: formData.date
+        date: formData.date,
+        salaryDate: formData.date,
+        paymentDate: formData.date,
+        depositDate: formData.date
       };
 
 
