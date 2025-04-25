@@ -199,7 +199,7 @@ export const createImportTemplate = async () => {
     XLSX.utils.sheet_add_aoa(worksheet, [
       ['Ingreso', '1,000.00', '2023-01-01', 'Ejemplo de ingreso', 'Danli', '', '', '', ''],
       ['Egreso', '500.00', '2023-01-02', 'Ejemplo de egreso', 'El Paraiso', '', '', '', ''],
-      ['Cierre', '2,500.00', '2023-01-03', '', 'Danli', '', '5', '2023-01-01', '2023-01-15'],
+      ['Cierre', '2,500.00', '2023-01-03', '', 'danli', '', '5', '2023-01-01', '2023-01-15'],
       ['Proveedor', '1,200.00', '2023-01-04', '', 'El Paraiso', 'Pollo Rey', '', '', ''],
       ['Salario', '800.00', '2023-01-05', 'Pago de salario', 'Danli', '', '', '', '']
     ], { origin: 1 });
@@ -334,7 +334,7 @@ const validateImportData = (data: Record<string, unknown>[]): ValidationResult =
       errors.push(`Fila ${rowNum}: El local está vacío`);
     } else {
       const normalizedLocal = String(localValue).trim().toLowerCase();
-      if (normalizedLocal !== 'Danli' && normalizedLocal !== 'el paraiso' && normalizedLocal !== 'paraiso') {
+      if (normalizedLocal !== 'danli' && normalizedLocal !== 'el paraiso' && normalizedLocal !== 'paraiso') {
         errors.push(`Fila ${rowNum}: El local "${localValue}" no es válido. Debe ser "Danli" o "El Paraiso"`);
       }
     }
@@ -425,7 +425,7 @@ const processTransactionsForImport = (jsonData: Record<string, unknown>[]): Reco
           amount: amount,
           date: row['Fecha'] || '',
           paymentDate: row['Fecha'] || '',
-          description: '', // Ignorar descripción para proveedores
+          description: '',
           store: { id: storeId },
           username: "default_user",
           supplier: row['Proveedor'] || undefined
@@ -436,7 +436,7 @@ const processTransactionsForImport = (jsonData: Record<string, unknown>[]): Reco
           type: typeKey,
           amount: amount,
           date: row['Fecha'] || '',
-          depositDate: row['Fecha'] || '',
+          salaryDate: row['Fecha'] || '',
           description: row['Descripción'] || '',
           store: { id: storeId },
           username: "default_user"
@@ -554,6 +554,20 @@ export const importFromExcel = async (apiUrl: string) => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.xlsx, .xls';
+        
+        input.oncancel = () => {
+          resolve({ success: false, message: 'No se seleccionó ningún archivo' });
+        };
+        
+        window.addEventListener('focus', function onFocus() {
+          setTimeout(() => {
+            if (!input.files || input.files.length === 0) {
+              window.removeEventListener('focus', onFocus);
+              resolve({ success: false, message: 'No se seleccionó ningún archivo' });
+            }
+          }, 300);
+        }, { once: true });
+        
         input.addEventListener('change', async (e) => {
           const target = e.target as HTMLInputElement;
           if (!target.files || target.files.length === 0) {
@@ -589,6 +603,14 @@ export const importFromExcel = async (apiUrl: string) => {
                 });
               }
             };
+            
+            reader.onerror = (error) => {
+              resolve({
+                success: false,
+                message: 'Error al leer el archivo: ' + (error ? error.toString() : 'Error desconocido')
+              });
+            };
+            
             reader.readAsBinaryString(file);
           } catch (error: any) {
             resolve({

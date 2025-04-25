@@ -652,6 +652,7 @@ const DynamicFormScreen = () => {
         onConfirm={handleDateConfirm}
         locale="es"
         date={formData.date ? parseDate(formData.date) : undefined}
+        validRange={{ startDate: undefined, endDate: new Date() }}
       />
 
       {/* Selector de rango de fechas (para depósitos de cierres) */}
