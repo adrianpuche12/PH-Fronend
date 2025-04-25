@@ -203,7 +203,7 @@ const TransactionsScreen = () => {
   const handleDeleteRequest = (transaction: any) => {
     Alert.alert(
       'Confirmar Borrado',
-      `¿Estás seguro de que quieres borrar esta transacción?\n\nTipo: ${transaction.type}\nMonto: $${transaction.amount}\nFecha: ${transaction.date}\nDescripción: ${transaction.description}`,
+      `¿Estás seguro de que quieres borrar esta transacción?\n\nTipo: ${transaction.type}\nMonto: L${transaction.amount}\nFecha: ${transaction.date}\nDescripción: ${transaction.description}`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { 
@@ -432,7 +432,7 @@ const TransactionsScreen = () => {
                       <Text style={styles.boldText}>Tipo:</Text> {item.type}
                     </Text>
                     <Text style={styles.transactionText}>
-                      <Text style={styles.boldText}>Monto:</Text> ${item.amount}
+                      <Text style={styles.boldText}>Monto:</Text> L{item.amount}
                     </Text>
                     <Text style={styles.transactionText}>
                       <Text style={styles.boldText}>Fecha:</Text> {item.date}

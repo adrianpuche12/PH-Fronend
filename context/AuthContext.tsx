@@ -2,7 +2,8 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import { API_KEYCLOAK_ADAPTER_URL } from '../config'; 
+import { API_KEYCLOAK_ADAPTER_URL } from '../config';
+import { Platform } from 'react-native';
 
 interface AuthState {
   accessToken: string | null;
@@ -22,6 +23,80 @@ interface AuthContextType extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+const Storage = {
+  async setItem(key: string, value: string): Promise<void> {
+    try {
+      if (Platform.OS === 'web') {
+        sessionStorage.setItem(key, value);
+      }
+      await AsyncStorage.setItem(key, value);
+    } catch (error) {
+      console.error('Error guardando datos:', error);
+    }
+  },
+
+  async getItem(key: string): Promise<string | null> {
+    try {
+      if (Platform.OS === 'web') {
+        return sessionStorage.getItem(key);
+      }
+      return await AsyncStorage.getItem(key);
+    } catch (error) {
+      console.error('Error obteniendo datos:', error);
+      return null;
+    }
+  },
+
+  async removeItem(key: string): Promise<void> {
+    try {
+      if (Platform.OS === 'web') {
+        sessionStorage.removeItem(key);
+      }
+      await AsyncStorage.removeItem(key);
+    } catch (error) {
+      console.error('Error eliminando datos:', error);
+    }
+  },
+
+  async multiSet(keyValuePairs: [string, string][]): Promise<void> {
+    try {
+      if (Platform.OS === 'web') {
+        keyValuePairs.forEach(([key, value]) => {
+          sessionStorage.setItem(key, value);
+        });
+        return;
+      }
+      await AsyncStorage.multiSet(keyValuePairs);
+    } catch (error) {
+      console.error('Error guardando múltiples datos:', error);
+    }
+  },
+
+  async multiGet(keys: string[]): Promise<readonly [string, string | null][]> {
+    try {
+      if (Platform.OS === 'web') {
+        return keys.map(key => [key, sessionStorage.getItem(key)] as [string, string | null]);
+      }
+      return await AsyncStorage.multiGet(keys);
+    } catch (error) {
+      console.error('Error obteniendo múltiples datos:', error);
+      return keys.map(key => [key, null] as [string, string | null]);
+    }
+  },
+
+  async multiRemove(keys: string[]): Promise<void> {
+    try {
+      if (Platform.OS === 'web') {
+        keys.forEach(key => sessionStorage.removeItem(key));
+        return;
+      }
+      await AsyncStorage.multiRemove(keys);
+    } catch (error) {
+      console.error('Error eliminando múltiples datos:', error);
+    }
+  }
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
@@ -53,13 +128,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshAccessToken = async () => {
+  const refreshAccessToken = async (tokenToUse?: string) => {
     try {
+      let refreshToken = tokenToUse || authState.refreshToken;
+      
+      if (!refreshToken) {
+        const storedRefreshToken = await Storage.getItem('refreshToken');
+        if (!storedRefreshToken) {
+          throw new Error("No refresh token available");
+        }
+        refreshToken = storedRefreshToken;
+      }
       const response = await axios.post(
-        `${API_KEYCLOAK_ADAPTER_URL}/token`, // CAMBIADO
+        `${API_KEYCLOAK_ADAPTER_URL}/refresh`,
         new URLSearchParams({
           grant_type: 'refresh_token',
-          refresh_token: authState.refreshToken!,
+          refresh_token: refreshToken,
           client_id: 'proyecto-h',
         }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
@@ -69,11 +153,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const decodedToken = jwtDecode<any>(access_token);
       const userRoles = decodedToken.realm_access?.roles || [];
       const isAdmin = userRoles.includes('admin');
+      const userName = decodedToken.preferred_username;
+      const userId = decodedToken.sub;
 
-      await AsyncStorage.multiSet([
+      await Storage.multiSet([
         ['accessToken', access_token],
         ['refreshToken', refresh_token],
         ['expiresIn', expires_in.toString()],
+        ['userName', userName],
+        ['userId', userId],
+        ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
       ]);
 
       setAxiosAuthHeader(access_token);
@@ -83,12 +172,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshToken: refresh_token,
         expiresIn: expires_in,
         roles: isAdmin ? ['admin'] : ['user'],
+        userName,
+        userId,
+        loading: false,
+        error: null
       }));
-
+  
       return response.data;
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-      await logout();
+    } catch (error: any) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        await logout();
+      }
       throw error;
     }
   };
@@ -96,15 +190,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const response = await axios.post(
-        `${API_KEYCLOAK_ADAPTER_URL}/login`, // CAMBIADO
+        `${API_KEYCLOAK_ADAPTER_URL}/login`,
         new URLSearchParams({
           username,
           password,
           client_id: 'proyecto-h',
         }),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded'
-         }, 
-         withCredentials: false
+        { 
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+          withCredentials: false
         }
       );
 
@@ -116,11 +210,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const userRoles = decodedToken.realm_access?.roles || [];
       const isAdmin = userRoles.includes('admin');
+      const userName = decodedToken.preferred_username;
+      const userId = decodedToken.sub;
 
-      await AsyncStorage.multiSet([
+      await Storage.multiSet([
         ['accessToken', access_token],
         ['refreshToken', refresh_token],
         ['expiresIn', expires_in.toString()],
+        ['userName', userName],
+        ['userId', userId],
+        ['roles', JSON.stringify(isAdmin ? ['admin'] : ['user'])],
       ]);
 
       setAxiosAuthHeader(access_token);
@@ -129,8 +228,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refreshToken: refresh_token,
         expiresIn: expires_in,
         roles: isAdmin ? ['admin'] : ['user'],
-        userName: decodedToken.preferred_username,
-        userId: decodedToken.sub,
+        userName,
+        userId,
         loading: false,
         error: null,
       });
@@ -149,7 +248,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'expiresIn']);
+      await Storage.multiRemove([
+        'accessToken', 
+        'refreshToken', 
+        'expiresIn', 
+        'userName', 
+        'userId', 
+        'roles'
+      ]);
+      
       setAxiosAuthHeader(null);
       setAuthState({
         accessToken: null,
@@ -169,31 +276,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const [[, accessToken], [, refreshToken], [, expiresIn]] = await AsyncStorage.multiGet([
+        const storageData = await Storage.multiGet([
           'accessToken',
           'refreshToken',
           'expiresIn',
+          'userName',
+          'userId',
+          'roles'
         ]);
-
+    
+        const storageMap = Object.fromEntries(storageData);
+        const accessToken = storageMap.accessToken;
+        const refreshToken = storageMap.refreshToken;
+        
         if (accessToken && refreshToken) {
-          if (isTokenExpiringSoon(accessToken)) {
-            await refreshAccessToken();
-          } else {
-            const decodedToken = jwtDecode<any>(accessToken);
-            const userRoles = decodedToken.realm_access?.roles || [];
-            const isAdmin = userRoles.includes('admin');
-
-            setAxiosAuthHeader(accessToken);
-            setAuthState({
-              accessToken,
-              refreshToken,
-              expiresIn: parseInt(expiresIn || '0', 10),
-              roles: isAdmin ? ['admin'] : ['user'],
-              userName: decodedToken.preferred_username,
-              userId: decodedToken.sub,
+          try {
+            if (isTokenExpiringSoon(accessToken)) {
+              await refreshAccessToken();
+            } else {
+              setAxiosAuthHeader(accessToken);
+              
+              let roles: string[] = [];
+              try {
+                if (storageMap.roles) {
+                  roles = JSON.parse(storageMap.roles);
+                }
+              } catch (e) {
+              }
+              
+              setAuthState({
+                accessToken,
+                refreshToken,
+                expiresIn: parseInt(storageMap.expiresIn || '0', 10),
+                roles,
+                userName: storageMap.userName,
+                userId: storageMap.userId,
+                loading: false,
+                error: null,
+              });
+            }
+          } catch (tokenError) {
+            setAuthState(prev => ({ 
+              ...prev, 
+              accessToken: null,
+              refreshToken: null,
+              roles: [],
               loading: false,
-              error: null,
-            });
+              error: null
+            }));
           }
         } else {
           setAuthState(prev => ({ ...prev, loading: false }));
@@ -212,13 +342,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       response => response,
       async error => {
         const originalRequest = error.config;
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (
+          error.response?.status === 401 && 
+          !originalRequest._retry && 
+          authState.refreshToken
+        ) {
           originalRequest._retry = true;
           try {
             const newTokens = await refreshAccessToken();
             originalRequest.headers['Authorization'] = `Bearer ${newTokens.access_token}`;
             return axios(originalRequest);
-          } catch {
+          } catch (refreshError) {
+            await logout();
             return Promise.reject(error);
           }
         }
@@ -229,7 +364,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       axios.interceptors.response.eject(interceptor);
     };
-  }, []);
+  }, [authState.refreshToken]);
 
   if (authState.loading) {
     return null;

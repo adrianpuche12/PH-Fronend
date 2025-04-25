@@ -9,7 +9,7 @@ import {
   Modal,
   Text,
 } from 'react-native';
-import { TextInput, Button, Card, Title } from 'react-native-paper';
+import { TextInput, Button, Card, Title, SegmentedButtons } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { Picker } from '@react-native-picker/picker';
 import ResponsiveButton from '@/components/ui/responsiveButton';
@@ -29,6 +29,7 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   const slideAnim = useState(new Animated.Value(-100))[0]; // Inicia fuera de la pantalla
+  const [selectedStore, setSelectedStore] = useState<number>(1);
 
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -54,6 +55,7 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
     setAmount('');
     setDate(undefined);
     setDescription('');
+    setSelectedStore(1);
   };
 
   const showMessage = (message: string, type: 'success' | 'error') => {
@@ -100,6 +102,7 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
       amount: parseFloat(amount.replace(',', '.')), // Convertir coma a punto para el backend
       date: date.toISOString().split('T')[0],
       description,
+      store: { id: selectedStore },
     };
 
     try {
@@ -154,6 +157,21 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
                 <Picker.Item label="Expense" value="expense" />
               </Picker>
             </View>
+            
+            {/* Selector de Local */}
+            <View style={styles.storeContainer}>
+              <Text style={styles.storeLabel}>Seleccionar Local:</Text>
+              <SegmentedButtons
+                value={selectedStore.toString()}
+                onValueChange={(value) => setSelectedStore(Number(value))}
+                buttons={[
+                  { value: '1', label: 'Danli' },
+                  { value: '2', label: 'El Paraiso' },
+                ]}
+                style={styles.storeSelector}
+              />
+            </View>
+            
             <TextInput
               label="Monto (ej. 100.50)"
               value={amount}
@@ -203,6 +221,7 @@ const FormScreen: React.FC<FormScreenProps> = ({ onClose }) => {
             <Text style={styles.title}>Informacion a enviar</Text>
             <View>
               <Text style={styles.modalText}>Tipo: {type}</Text>
+              <Text style={styles.modalText}>Local: {selectedStore === 1 ? 'Danli' : 'El Paraiso'}</Text>
               <Text style={styles.modalText}>Monto: {amount}</Text>
               <Text style={styles.modalText}>Fecha: {date ? date.toISOString().split('T')[0] : ''}</Text>
               <Text style={styles.modalText}>Descripción: {description}</Text>
@@ -277,6 +296,18 @@ const styles = StyleSheet.create({
   picker: {
     width: '100%',
     height: '100%',
+  },
+  storeContainer: {
+    marginBottom: 16,
+  },
+  storeLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#555',
+  },
+  storeSelector: {
+    marginTop: 5,
   },
   button: {
     marginTop: 16,

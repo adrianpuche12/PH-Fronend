@@ -162,13 +162,13 @@ const BalanceCalculator: React.FC<BalanceCalculatorProps> = ({
               {startDate && endDate && (
                 <>
                   <View style={styles.balanceContainer}>
-                    <Text style={styles.balanceText}>Ingresos: ${balance.incomes.toFixed(2)}</Text>
-                    <Text style={styles.balanceText}>Egresos: ${balance.expenses.toFixed(2)}</Text>
+                    <Text style={styles.balanceText}>Ingresos: L{balance.incomes.toFixed(2)}</Text>
+                    <Text style={styles.balanceText}>Egresos: L{balance.expenses.toFixed(2)}</Text>
                     <Text style={[
                       styles.balanceTotal, 
                       { color: balance.total >= 0 ? '#4CAF50' : '#F44336' }
                     ]}>
-                      Balance Total: ${balance.total.toFixed(2)}
+                      Balance Total: L{balance.total.toFixed(2)}
                     </Text>
                   </View>
 
@@ -186,7 +186,7 @@ const BalanceCalculator: React.FC<BalanceCalculatorProps> = ({
                                 {transaction.type === 'income' ? '↑' : '↓'} {transaction.type}
                               </Text>
                               <Text style={styles.transactionAmount}>
-                                ${parseFloat(transaction.amount.toString()).toFixed(2)}
+                                L{parseFloat(transaction.amount.toString()).toFixed(2)}
                               </Text>
                             </View>
                             <Text style={styles.transactionDate}>
