@@ -128,17 +128,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshAccessToken = async () => {
+  const refreshAccessToken = async (tokenToUse?: string) => {
     try {
-      if (!authState.refreshToken) {
-        throw new Error("No refresh token available");
+      let refreshToken = tokenToUse || authState.refreshToken;
+      
+      if (!refreshToken) {
+        const storedRefreshToken = await Storage.getItem('refreshToken');
+        if (!storedRefreshToken) {
+          throw new Error("No refresh token available");
+        }
+        refreshToken = storedRefreshToken;
       }
-
       const response = await axios.post(
-        `${API_KEYCLOAK_ADAPTER_URL}/token`,
+        `${API_KEYCLOAK_ADAPTER_URL}/refresh`,
         new URLSearchParams({
           grant_type: 'refresh_token',
-          refresh_token: authState.refreshToken,
+          refresh_token: refreshToken,
           client_id: 'proyecto-h',
         }),
         { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
@@ -172,11 +177,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading: false,
         error: null
       }));
-
+  
       return response.data;
-    } catch (error) {
-      console.error('Error refreshing token:', error);
-      await logout();
+    } catch (error: any) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        await logout();
+      }
       throw error;
     }
   };
@@ -278,38 +284,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'userId',
           'roles'
         ]);
-
+    
         const storageMap = Object.fromEntries(storageData);
         const accessToken = storageMap.accessToken;
         const refreshToken = storageMap.refreshToken;
-        const expiresIn = storageMap.expiresIn;
-        const userName = storageMap.userName;
-        const userId = storageMap.userId;
-        let roles: string[] = [];
         
-        try {
-          if (storageMap.roles) {
-            roles = JSON.parse(storageMap.roles);
-          }
-        } catch (e) {
-          console.error('Error parsing roles from storage', e);
-        }
-
         if (accessToken && refreshToken) {
-          if (isTokenExpiringSoon(accessToken)) {
-            await refreshAccessToken();
-          } else {
-            setAxiosAuthHeader(accessToken);
-            setAuthState({
-              accessToken,
-              refreshToken,
-              expiresIn: parseInt(expiresIn || '0', 10),
-              roles,
-              userName,
-              userId,
+          try {
+            if (isTokenExpiringSoon(accessToken)) {
+              await refreshAccessToken();
+            } else {
+              setAxiosAuthHeader(accessToken);
+              
+              let roles: string[] = [];
+              try {
+                if (storageMap.roles) {
+                  roles = JSON.parse(storageMap.roles);
+                }
+              } catch (e) {
+              }
+              
+              setAuthState({
+                accessToken,
+                refreshToken,
+                expiresIn: parseInt(storageMap.expiresIn || '0', 10),
+                roles,
+                userName: storageMap.userName,
+                userId: storageMap.userId,
+                loading: false,
+                error: null,
+              });
+            }
+          } catch (tokenError) {
+            setAuthState(prev => ({ 
+              ...prev, 
+              accessToken: null,
+              refreshToken: null,
+              roles: [],
               loading: false,
-              error: null,
-            });
+              error: null
+            }));
           }
         } else {
           setAuthState(prev => ({ ...prev, loading: false }));
