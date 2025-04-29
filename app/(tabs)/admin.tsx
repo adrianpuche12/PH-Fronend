@@ -1,8 +1,6 @@
 import React from 'react';
-import AdminScreen from '@/screens/AdminScreen';
+import Admin from '@/screens/AdminScreen';
 
-export default function AdmScreen() {
-  return (
-    <AdminScreen />
-  );
+export default function AdminScreen() {
+  return <Admin />;
 }
