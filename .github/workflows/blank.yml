@@ -3,7 +3,7 @@ name: Deploy Frontend to Docker Hub
 on:
   push:
     branches:
-      - dev  # Ejecuta el workflow cuando hay un push a la rama "dev"
+      - master  # Ejecuta el workflow cuando hay un push a la rama "dev"
 
 jobs:
   build-and-push:
