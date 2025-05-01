@@ -47,6 +47,7 @@ interface Transaction {
   supplier?: string;
   depositDate?: string;
   paymentDate?: string;
+  salaryDate?: string;
   storeId?: number;
   storeName?: string;
   store?: {
@@ -371,8 +372,8 @@ const AdminScreen = () => {
             newOp.date = op.depositDate;
           } else if (op.type === 'SUPPLIER' && op.paymentDate) {
             newOp.date = op.paymentDate;
-          } else if (op.type === 'SALARY' && op.depositDate) {
-            newOp.date = op.depositDate;
+          } else if (op.type === 'SALARY' && op.salaryDate) {
+            newOp.date = op.salaryDate;
           }
           return newOp;
         });
@@ -591,7 +592,7 @@ const AdminScreen = () => {
         amount: parsedAmount,
         description: newDescription || undefined,
         username: "default_user",
-        depositDate: newDate || undefined,
+        salaryDate: newDate || undefined,
         storeId: newStoreId
       };
     } else {
@@ -779,7 +780,7 @@ const AdminScreen = () => {
               style={styles.modalInput}
             />
             <TextInput
-              label="Fecha de Depósito"
+              label="Fecha de Salario"
               value={newDate}
               style={styles.modalInput}
               showSoftInputOnFocus={false}

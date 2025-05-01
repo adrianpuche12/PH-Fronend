@@ -206,6 +206,7 @@ const DynamicFormScreen = () => {
       if (!formData.description) newErrors.description = true;
     } else if (formType === 'closing-deposits') {
       if (!formData.amount) newErrors.amount = true;
+      if (!formData.date) newErrors.date = true; 
       if (!formData.periodStart) newErrors.periodStart = true;
       if (!formData.periodEnd) newErrors.periodEnd = true;
     } else if (formType === 'supplier-payments') {
@@ -418,6 +419,30 @@ const DynamicFormScreen = () => {
               />
             </View>
             
+            <View style={styles.inputContainer}>
+              <TextInput
+                label="Fecha de Depósito"
+                value={formData.date ? format(parseDate(formData.date), 'yyyy-MM-dd') : ''}
+                mode="outlined"
+                onFocus={() => {
+                  setSelectedDateField('date');
+                  setDatePickerVisible(true);
+                }}
+                style={styles.input}
+                error={errors.date}
+                left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
+                outlineColor="#DDDDDD"
+                activeOutlineColor="#D4A72B"
+                theme={{ colors: { primary: '#D4A72B' } }}
+                showSoftInputOnFocus={false}
+              />
+              {errors.date && (
+                <HelperText type="error" visible={true}>
+                  La fecha de depósito es obligatoria
+                </HelperText>
+              )}
+            </View>
+
             {/* Selector de rango de fechas unificado */}
             <View style={styles.inputContainer}>
               <TextInput
