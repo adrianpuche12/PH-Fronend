@@ -5,6 +5,7 @@ import { jwtDecode } from 'jwt-decode';
 import { API_KEYCLOAK_ADAPTER_URL } from '../config';
 import { Platform } from 'react-native';
 
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
@@ -15,6 +16,7 @@ interface AuthState {
   loading: boolean;
   error: string | null;
 }
+
 
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<boolean>;
