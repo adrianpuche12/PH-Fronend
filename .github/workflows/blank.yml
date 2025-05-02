@@ -1,9 +1,10 @@
-name: Deploy Frontend to Docker Hub
+name: Desplegar Frontend a Docker Hub
 
 on:
   push:
     branches:
-      - master  # Ejecuta el workflow cuando hay un push a la rama "dev"
+      - master  # Ejecuta el workflow cuando hay un push a la rama "master"
+      - dev     # Ejecuta el workflow cuando hay un push a la rama "dev"
 
 jobs:
   build-and-push:
@@ -11,41 +12,50 @@ jobs:
     environment: production  # Asigna el Environment llamado "production"
 
     steps:
-      - name: Checkout repository
+      - name: Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
+      - name: Iniciar sesión en Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Define Image Tag
-        env:
-          IMAGE_NAME: baumanpeter/humberto:humbertofrontend
+      - name: Obtener nombre de la rama
+        id: branch_name
+        run: |
+          echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+          echo "🔖 Rama detectada: ${GITHUB_REF#refs/heads/}"
+
+      - name: Definir etiqueta de imagen
         run: |
           echo "🔢 Configurando versión de la imagen..."
-          IMAGE_VERSION="${{ env.IMAGE_NAME }}-v${{ github.run_number }}"
+          if [ "${{ env.BRANCH_NAME }}" = "master" ]; then
+            IMAGE_NAME="baumanpeter/humberto:humbertofrontend"
+          else
+            IMAGE_NAME="baumanpeter/humberto:humbertofrontend-dev"
+          fi
+          IMAGE_VERSION="$IMAGE_NAME-v${{ github.run_number }}"
           echo "IMAGE_VERSION=$IMAGE_VERSION" >> $GITHUB_ENV
           echo "✅ Imagen con versión: $IMAGE_VERSION"
 
-      - name: Verify directory contents
+      - name: Verificar contenido del directorio
         run: ls -l .
 
-      - name: Build Docker image and load locally
+      - name: Construir imagen Docker y cargarla localmente
         run: |
-          echo "🚀 Construyendo la imagen Docker..."
+          echo "🚀 Construyendo la imagen Docker para la rama ${{ env.BRANCH_NAME }}..."
           docker buildx build --platform linux/amd64 --load -t $IMAGE_VERSION .
           echo "✅ Imagen construida y cargada en Docker local."
 
-      - name: List Docker images (debugging)
+      - name: Listar imágenes Docker (depuración)
         run: docker images
 
-      - name: Push Docker image to Docker Hub
+      - name: Subir imagen Docker a Docker Hub
         run: |
           echo "📤 Subiendo la imagen a Docker Hub..."
           docker push $IMAGE_VERSION
-          echo "✅ Imagen subida exitosamente a Docker Hub."
+          echo "✅ Imagen subida exitosamente a Docker Hub para la rama ${{ env.BRANCH_NAME }}."
