@@ -34,7 +34,7 @@ const DynamicFormScreen = () => {
     const [year, month, day] = dateString.split('-').map(Number);
     return new Date(year, month - 1, day, 12, 0, 0);
   };
-  
+
   interface FormDataType {
     type: string;
     amount: string;
@@ -47,7 +47,7 @@ const DynamicFormScreen = () => {
     supplier: string;
     [key: string]: any;
   }
-  
+
   const [formData, setFormData] = useState<FormDataType>({
     // Campos para transacciones
     type: 'income',
@@ -86,7 +86,7 @@ const DynamicFormScreen = () => {
       ...prevData,
       date: getCurrentFormattedDate()
     }));
-    
+
   }, []);
 
   const showMessage = (type: 'success' | 'error', message: string) => {
@@ -113,7 +113,7 @@ const DynamicFormScreen = () => {
 
   const clearData = () => {
     const currentDate = getCurrentFormattedDate();
-    
+
     handleInputChange('amount', '');
     handleInputChange('date', currentDate);
     handleInputChange('description', '');
@@ -167,15 +167,15 @@ const DynamicFormScreen = () => {
   };
 
   // Manejador para rango de fechas (depósitos de cierre)
-  const handleDateRangeConfirm = ({ 
-    startDate, 
-    endDate 
-  }: { 
-    startDate: Date | undefined, 
-    endDate: Date | undefined 
+  const handleDateRangeConfirm = ({
+    startDate,
+    endDate
+  }: {
+    startDate: Date | undefined,
+    endDate: Date | undefined
   }) => {
     setDateRange({ startDate, endDate });
-    
+
     if (startDate) {
       const formattedStartDate = format(startDate, 'yyyy-MM-dd');
       setFormData((prevData: FormDataType) => ({
@@ -184,7 +184,7 @@ const DynamicFormScreen = () => {
       }));
       setErrors((prevErrors) => ({ ...prevErrors, periodStart: false }));
     }
-    
+
     if (endDate) {
       const formattedEndDate = format(endDate, 'yyyy-MM-dd');
       setFormData((prevData: FormDataType) => ({
@@ -193,7 +193,7 @@ const DynamicFormScreen = () => {
       }));
       setErrors((prevErrors) => ({ ...prevErrors, periodEnd: false }));
     }
-    
+
     setDateRangePickerVisible(false);
   };
 
@@ -206,7 +206,7 @@ const DynamicFormScreen = () => {
       if (!formData.description) newErrors.description = true;
     } else if (formType === 'closing-deposits') {
       if (!formData.amount) newErrors.amount = true;
-      if (!formData.date) newErrors.date = true; 
+      if (!formData.date) newErrors.date = true;
       if (!formData.periodStart) newErrors.periodStart = true;
       if (!formData.periodEnd) newErrors.periodEnd = true;
     } else if (formType === 'supplier-payments') {
@@ -239,7 +239,7 @@ const DynamicFormScreen = () => {
       const url = formType === 'transaction' ? TRANSACTIONS_URL : `${BACKEND_URL}/${formType}`;
       const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
       const amount = parseFloat(amountValue);
-      
+
       const formToSend = {
         ...formData,
         amount: amount,
@@ -418,7 +418,7 @@ const DynamicFormScreen = () => {
                 theme={{ colors: { primary: '#D4A72B' } }}
               />
             </View>
-            
+
             <View style={styles.inputContainer}>
               <TextInput
                 label="Fecha de Depósito"
@@ -447,8 +447,8 @@ const DynamicFormScreen = () => {
             <View style={styles.inputContainer}>
               <TextInput
                 label="Periodo (Desde - Hasta)"
-                value={formData.periodStart && formData.periodEnd ? 
-                  `${formData.periodStart} - ${formData.periodEnd}` : 
+                value={formData.periodStart && formData.periodEnd ?
+                  `${formData.periodStart} - ${formData.periodEnd}` :
                   ''}
                 mode="outlined"
                 onFocus={() => {
@@ -514,7 +514,20 @@ const DynamicFormScreen = () => {
                 theme={{ colors: { primary: '#D4A72B' } }}
               />
             </View>
-
+            <View style={styles.inputContainer}>
+              <TextInput
+                label="Descripción"
+                value={formData.description}
+                onChangeText={(value) => handleInputChange('description', value)}
+                mode="outlined"
+                style={styles.input}
+                error={errors.description}
+                left={<TextInput.Icon icon="text" color="#D4A72B" />}
+                outlineColor="#DDDDDD"
+                activeOutlineColor="#D4A72B"
+                theme={{ colors: { primary: '#D4A72B' } }}
+              />
+            </View>
           </>
         );
       case 'salary-payments':
