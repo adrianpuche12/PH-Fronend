@@ -27,11 +27,11 @@ import ExcelManager from '@/components/ExcelManager';
 import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
-  income:   'Ingreso',
-  expense:  'Egreso',
-  SALARY:   'Salario',
+  income: 'Ingreso',
+  expense: 'Egreso',
+  SALARY: 'Salario',
   SUPPLIER: 'Proveedor',
-  CLOSING:  'Cierre',
+  CLOSING: 'Cierre',
 };
 
 // Actualizamos la interfaz para incluir los nuevos tipos
@@ -197,96 +197,96 @@ const CompactDateFilters = ({
   };
 
   return (
-  <View style={styles.compactFiltersContainer}>
-    <View style={isLargeScreen ? styles.filtersRowWeb : undefined}>
-      <View style={isLargeScreen ? styles.inputGroupWeb : styles.compactDateInputs}>
-        {/* Fechas */}
-        <TextInput
-          label="Desde"
-          value={formatDate(startDate)}
-          mode="outlined"
-          dense
-          style={styles.compactDateInput}
-          onFocus={() => {
-            setSelectedDateInput('start');
-            setDatePickerOpen(true);
-          }}
-          left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
-          outlineColor="#DDDDDD"
-          activeOutlineColor="#D4A72B"
-          theme={{ colors: { primary: '#D4A72B' } }}
-        />
-        <TextInput
-          label="Hasta"
-          value={formatDate(endDate)}
-          mode="outlined"
-          dense
-          style={styles.compactDateInput}
-          onFocus={() => {
-            setSelectedDateInput('end');
-            setDatePickerOpen(true);
-          }}
-          left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
-          outlineColor="#DDDDDD"
-          activeOutlineColor="#D4A72B"
-          theme={{ colors: { primary: '#D4A72B' } }}
-        />
-      </View>
-
-      {/* Selector de tienda */}
-      <View style={isLargeScreen ? styles.storeFilterWeb : styles.storeFilterCompact}>
-        <SegmentedButtons
-          value={selectedStore?.toString() || 'all'}
-          onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
-          buttons={[
-            { value: 'all', label: 'Todos' },
-            { value: '1', label: 'Danli' },
-            { value: '2', label: 'El Paraiso' },
-          ]}
-          style={styles.storeSelectorCompact}
-        />
-      </View>
-
-      {/* Botones */}
-      <View style={isLargeScreen ? styles.buttonGroupWeb : styles.compactButtonsRow}>
-        {(startDate || endDate || selectedStore) && (
-          <Button
+    <View style={styles.compactFiltersContainer}>
+      <View style={isLargeScreen ? styles.filtersRowWeb : undefined}>
+        <View style={isLargeScreen ? styles.inputGroupWeb : styles.compactDateInputs}>
+          {/* Fechas */}
+          <TextInput
+            label="Desde"
+            value={formatDate(startDate)}
             mode="outlined"
-            compact
-            onPress={() => {
-              setStartDate(undefined);
-              setEndDate(undefined);
-              setSelectedStore(null);
+            dense
+            style={styles.compactDateInput}
+            onFocus={() => {
+              setSelectedDateInput('start');
+              setDatePickerOpen(true);
             }}
-            style={styles.compactClearButton}
-            color="#D4A72B"
+            left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
+            outlineColor="#DDDDDD"
+            activeOutlineColor="#D4A72B"
+            theme={{ colors: { primary: '#D4A72B' } }}
+          />
+          <TextInput
+            label="Hasta"
+            value={formatDate(endDate)}
+            mode="outlined"
+            dense
+            style={styles.compactDateInput}
+            onFocus={() => {
+              setSelectedDateInput('end');
+              setDatePickerOpen(true);
+            }}
+            left={<TextInput.Icon icon="calendar" color="#D4A72B" size={20} />}
+            outlineColor="#DDDDDD"
+            activeOutlineColor="#D4A72B"
+            theme={{ colors: { primary: '#D4A72B' } }}
+          />
+        </View>
+
+        {/* Selector de tienda */}
+        <View style={isLargeScreen ? styles.storeFilterWeb : styles.storeFilterCompact}>
+          <SegmentedButtons
+            value={selectedStore?.toString() || 'all'}
+            onValueChange={(value) => setSelectedStore(value === 'all' ? null : Number(value))}
+            buttons={[
+              { value: 'all', label: 'Todos' },
+              { value: '1', label: 'Danli' },
+              { value: '2', label: 'El Paraiso' },
+            ]}
+            style={styles.storeSelectorCompact}
+          />
+        </View>
+
+        {/* Botones */}
+        <View style={isLargeScreen ? styles.buttonGroupWeb : styles.compactButtonsRow}>
+          {(startDate || endDate || selectedStore) && (
+            <Button
+              mode="outlined"
+              compact
+              onPress={() => {
+                setStartDate(undefined);
+                setEndDate(undefined);
+                setSelectedStore(null);
+              }}
+              style={styles.compactClearButton}
+              color="#D4A72B"
+            >
+              Limpiar
+            </Button>
+          )}
+          <Button
+            mode="contained"
+            compact
+            onPress={() => fetchData(startDate, endDate, selectedStore)}
+            style={styles.compactRefreshButton}
+            icon="refresh"
+            buttonColor="#2196F3"
           >
-            Limpiar
+            Actualizar
           </Button>
-        )}
-        <Button
-          mode="contained"
-          compact
-          onPress={() => fetchData(startDate, endDate, selectedStore)}
-          style={styles.compactRefreshButton}
-          icon="refresh"
-          buttonColor="#2196F3"
-        >
-          Actualizar
-        </Button>
-        <Button
-          mode="contained"
-          compact
-          onPress={onExcelPress}
-          style={styles.compactExcelButton}
-          icon="microsoft-excel"
-          buttonColor="#28a745"
-        >
-          Excel
-        </Button>
+          <Button
+            mode="contained"
+            compact
+            onPress={onExcelPress}
+            style={styles.compactExcelButton}
+            icon="microsoft-excel"
+            buttonColor="#28a745"
+          >
+            Excel
+          </Button>
+        </View>
       </View>
     </View>
-  </View>
   );
 };
 
@@ -403,7 +403,7 @@ const AdminScreen = () => {
               const txDateStr = typeof tx.date === 'string'
                 ? tx.date.split('T')[0]
                 : format(new Date(tx.date), 'yyyy-MM-dd');
-  
+
               return txDateStr >= startDateStr && txDateStr <= endDateStr;
             } catch (error) {
               console.warn('Error al procesar fecha:', tx.date, error);
@@ -419,10 +419,10 @@ const AdminScreen = () => {
         if (!b.date) return -1;
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
-    
+
         return dateB.getTime() - dateA.getTime();
       });
-      
+
       setTransactions(sortedTransactions);
       setCurrentPage(1);
     } catch (err) {
@@ -585,7 +585,8 @@ const AdminScreen = () => {
         username: "default_user",
         supplier: newSupplier || undefined,
         paymentDate: newDate || undefined,
-        storeId: newStoreId
+        storeId: newStoreId,
+        description: newDescription || undefined
       };
     } else if (editingTransaction.type === 'SALARY') {
       updatedTransaction = {
@@ -763,6 +764,12 @@ const AdminScreen = () => {
               onChangeText={setNewSupplier}
               style={styles.modalInput}
             />
+            <TextInput
+              label="Descripción"
+              value={newDescription}
+              onChangeText={setNewDescription}
+              style={styles.modalInput}
+            />
           </>
         );
       case 'SALARY':
@@ -914,7 +921,7 @@ const AdminScreen = () => {
             <View style={styles.transactionTypeContainer}>
               <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
               <Text style={[styles.transactionType, { color: typeColor }]}>
-              {TRANSACTION_LABELS[item.type]}
+                {TRANSACTION_LABELS[item.type]}
               </Text>
             </View>
             <Text style={styles.transactionAmount}>
@@ -955,14 +962,14 @@ const AdminScreen = () => {
               </Text>
             </View>
 
-            {TRANSACTION_LABELS[item.type]=== 'CLOSING' && item.closingsCount && (
+            {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
                 <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
               </View>
             )}
 
-            {TRANSACTION_LABELS[item.type]=== 'CLOSING' && item.periodStart && item.periodEnd && (
+            {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
                 <Text style={styles.detailText}>
@@ -1087,23 +1094,23 @@ const AdminScreen = () => {
       ) : (
         // Para pantallas grandes, utilizamos el diseño original
         <View style={styles.controlsContainer}>
-        {/* Filtros horizontales */}
-        <CompactDateFilters
-          startDate={startDate}
-          endDate={endDate}
-          selectedStore={selectedStore}
-          setStartDate={setStartDate}
-          setEndDate={setEndDate}
-          setSelectedStore={setSelectedStore}
-          fetchData={fetchData}
-          setDatePickerOpen={setDatePickerOpen}
-          setSelectedDateInput={setSelectedDateInput}
-          onExcelPress={() => setShowExcelManager(true)}
-        />
-        
-        {/* Balance General desplegable */}
-        <CollapsibleBalanceCard transactions={transactions} />
-      </View>
+          {/* Filtros horizontales */}
+          <CompactDateFilters
+            startDate={startDate}
+            endDate={endDate}
+            selectedStore={selectedStore}
+            setStartDate={setStartDate}
+            setEndDate={setEndDate}
+            setSelectedStore={setSelectedStore}
+            fetchData={fetchData}
+            setDatePickerOpen={setDatePickerOpen}
+            setSelectedDateInput={setSelectedDateInput}
+            onExcelPress={() => setShowExcelManager(true)}
+          />
+
+          {/* Balance General desplegable */}
+          <CollapsibleBalanceCard transactions={transactions} />
+        </View>
       )}
 
       {loading ? (
@@ -1510,7 +1517,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     borderRadius: 30,
   },
-  
+
   // Estilos para el modal
   modalOverlay: {
     flex: 1,
@@ -1556,7 +1563,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     color: '#555',
   },
-  
+
   // Estilos para la paginación
   fixedPaginationContainer: {
     paddingVertical: 10,
@@ -1597,7 +1604,7 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.5,
   },
-  
+
   // Otros estilos
   loadingContainer: {
     flex: 1,
