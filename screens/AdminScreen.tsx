@@ -653,259 +653,260 @@ const AdminScreen = () => {
   };
 
   // Render del modal de edición para cada tipo
-  const renderEditFields = () => {
-    if (!editingTransaction) return null;
+  // Render del modal de edición para cada tipo
+const renderEditFields = () => {
+  if (!editingTransaction) return null;
 
-    const storeSelector = (
-      <View style={styles.modalInputContainer}>
-        <Text style={styles.modalInputLabel}>Local:</Text>
-        <SegmentedButtons
-          value={newStoreId.toString()}
-          onValueChange={(value) => setNewStoreId(Number(value))}
-          buttons={[
-            { value: '1', label: 'Danli' },
-            { value: '2', label: 'El Paraiso' },
-          ]}
-          style={styles.storeSelector}
-        />
-      </View>
-    );
+  const storeSelector = (
+    <View style={styles.modalInputContainer}>
+      <Text style={styles.modalInputLabel}>Local:</Text>
+      <SegmentedButtons
+        value={newStoreId.toString()}
+        onValueChange={(value) => setNewStoreId(Number(value))}
+        buttons={[
+          { value: '1', label: 'Danli' },
+          { value: '2', label: 'El Paraiso' },
+        ]}
+        style={styles.storeSelector}
+      />
+    </View>
+  );
 
-    switch (editingTransaction.type) {
-      case 'CLOSING':
-        return (
-          <>
-            {storeSelector}
-            <TextInput
-              label="Monto"
-              value={newAmount}
-              onChangeText={(value) => {
-                const formattedValue = formatAmountInput(value);
-                setNewAmount(formattedValue);
+  switch (editingTransaction.type) {
+    case 'CLOSING':
+      return (
+        <>
+          {storeSelector}
+          <TextInput
+            label="Monto"
+            value={newAmount}
+            onChangeText={(value) => {
+              const formattedValue = formatAmountInput(value);
+              setNewAmount(formattedValue);
+            }}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Fecha de Depósito"
+            value={newDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Periodo Desde"
+            value={newPeriodStart}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('periodStart');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('periodStart');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Periodo Hasta"
+            value={newPeriodEnd}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('periodEnd');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('periodEnd');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+        </>
+      );
+    case 'SUPPLIER':
+      return (
+        <>
+          {storeSelector}
+          <TextInput
+            label="Monto"
+            value={newAmount}
+            onChangeText={(value) => {
+              const formattedValue = formatAmountInput(value);
+              setNewAmount(formattedValue);
+            }}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Fecha de Pago"
+            value={newDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Proveedor"
+            value={newSupplier}
+            onChangeText={setNewSupplier}
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Descripción"
+            value={newDescription}
+            onChangeText={setNewDescription}
+            style={styles.modalInput}
+          />
+        </>
+      );
+    case 'SALARY':
+      return (
+        <>
+          {storeSelector}
+          <TextInput
+            label="Monto"
+            value={newAmount}
+            onChangeText={(value) => {
+              const formattedValue = formatAmountInput(value);
+              setNewAmount(formattedValue);
+            }}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Fecha de Salario"
+            value={newDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Descripción"
+            value={newDescription}
+            onChangeText={setNewDescription}
+            style={styles.modalInput}
+          />
+        </>
+      );
+    case 'income':
+    case 'expense':
+      return (
+        <>
+          {storeSelector}
+          
+          {/* Selector de tipo específico para ingresos/egresos */}
+          <View style={styles.modalInputContainer}>
+            <Text style={styles.modalInputLabel}>Tipo de transacción:</Text>
+            <SegmentedButtons
+              value={editingTransaction.type}
+              onValueChange={(value: string) => {
+                // Solo permitimos 'income' o 'expense'
+                if (value === 'income' || value === 'expense') {
+                  setEditingTransaction({
+                    ...editingTransaction,
+                    type: value as 'income' | 'expense'
+                  });
+                }
               }}
-              keyboardType="numeric"
-              style={styles.modalInput}
+              buttons={[
+                { value: 'income', label: 'Ingreso' },
+                { value: 'expense', label: 'Egreso' },
+              ]}
+              style={styles.storeSelector}
             />
-            <TextInput
-              label="Fecha de Depósito"
-              value={newDate}
-              style={styles.modalInput}
-              showSoftInputOnFocus={false}
-              onFocus={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }}
-              right={<TextInput.Icon icon="calendar" onPress={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }} />}
-            />
-            <TextInput
-              label="Periodo Desde"
-              value={newPeriodStart}
-              style={styles.modalInput}
-              showSoftInputOnFocus={false}
-              onFocus={() => {
-                setDateEditField('periodStart');
-                setDatePickerEditVisible(true);
-              }}
-              right={<TextInput.Icon icon="calendar" onPress={() => {
-                setDateEditField('periodStart');
-                setDatePickerEditVisible(true);
-              }} />}
-            />
-            <TextInput
-              label="Periodo Hasta"
-              value={newPeriodEnd}
-              style={styles.modalInput}
-              showSoftInputOnFocus={false}
-              onFocus={() => {
-                setDateEditField('periodEnd');
-                setDatePickerEditVisible(true);
-              }}
-              right={<TextInput.Icon icon="calendar" onPress={() => {
-                setDateEditField('periodEnd');
-                setDatePickerEditVisible(true);
-              }} />}
-            />
-          </>
-        );
-      case 'SUPPLIER':
-        return (
-          <>
-            {storeSelector}
-            <TextInput
-              label="Monto"
-              value={newAmount}
-              onChangeText={(value) => {
-                const formattedValue = formatAmountInput(value);
-                setNewAmount(formattedValue);
-              }}
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <TextInput
-              label="Fecha de Pago"
-              value={newDate}
-              style={styles.modalInput}
-              showSoftInputOnFocus={false}
-              onFocus={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }}
-              right={<TextInput.Icon icon="calendar" onPress={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }} />}
-            />
-            <TextInput
-              label="Proveedor"
-              value={newSupplier}
-              onChangeText={setNewSupplier}
-              style={styles.modalInput}
-            />
-            <TextInput
-              label="Descripción"
-              value={newDescription}
-              onChangeText={setNewDescription}
-              style={styles.modalInput}
-            />
-          </>
-        );
-      case 'SALARY':
-        return (
-          <>
-            {storeSelector}
-            <TextInput
-              label="Monto"
-              value={newAmount}
-              onChangeText={(value) => {
-                const formattedValue = formatAmountInput(value);
-                setNewAmount(formattedValue);
-              }}
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <TextInput
-              label="Fecha de Salario"
-              value={newDate}
-              style={styles.modalInput}
-              showSoftInputOnFocus={false}
-              onFocus={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }}
-              right={<TextInput.Icon icon="calendar" onPress={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }} />}
-            />
-            <TextInput
-              label="Descripción"
-              value={newDescription}
-              onChangeText={setNewDescription}
-              style={styles.modalInput}
-            />
-          </>
-        );
-      case 'income':
-      case 'expense':
-        return (
-          <>
-            {storeSelector}
-            <TextInput
-              label="Monto"
-              value={newAmount}
-              onChangeText={(value) => {
-                const formattedValue = formatAmountInput(value);
-                setNewAmount(formattedValue);
-              }}
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <TextInput
-              label="Fecha"
-              value={newDate}
-              style={styles.modalInput}
-              showSoftInputOnFocus={false}
-              onFocus={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }}
-              right={<TextInput.Icon icon="calendar" onPress={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }} />}
-            />
-            <TextInput
-              label="Descripción"
-              value={newDescription}
-              onChangeText={setNewDescription}
-              style={styles.modalInput}
-            />
-          </>
-        );
-      default:
-        return (
-          <>
-            {storeSelector}
-
-            {/* Selector de tipo (nuevo) */}
-            <View style={styles.modalInputContainer}>
-              <Text style={styles.modalInputLabel}>Tipo de transacción:</Text>
-              <SegmentedButtons
-                value={editingTransaction.type}
-                onValueChange={(value: string) => {
-                  // Verificamos que el valor sea uno de los permitidos antes de asignarlo
-                  if (value === 'income' || value === 'expense') {
-                    setEditingTransaction({
-                      ...editingTransaction,
-                      type: value as 'income' | 'expense'
-                    });
-                  }
-                }}
-                buttons={[
-                  { value: 'income', label: 'Ingreso' },
-                  { value: 'expense', label: 'Egreso' },
-                ]}
-                style={styles.storeSelector}
-              />
-            </View>
-
-            <TextInput
-              label="Monto"
-              value={newAmount}
-              onChangeText={(value) => {
-                const formattedValue = formatAmountInput(value);
-                setNewAmount(formattedValue);
-              }}
-              keyboardType="numeric"
-              style={styles.modalInput}
-            />
-            <TextInput
-              label="Fecha"
-              value={newDate}
-              style={styles.modalInput}
-              showSoftInputOnFocus={false}
-              onFocus={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }}
-              right={<TextInput.Icon icon="calendar" onPress={() => {
-                setDateEditField('date');
-                setDatePickerEditVisible(true);
-              }} />}
-            />
-            <TextInput
-              label="Descripción"
-              value={newDescription}
-              onChangeText={setNewDescription}
-              style={styles.modalInput}
-            />
-          </>
-        );
-    }
+          </View>
+          
+          <TextInput
+            label="Monto"
+            value={newAmount}
+            onChangeText={(value) => {
+              const formattedValue = formatAmountInput(value);
+              setNewAmount(formattedValue);
+            }}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Fecha"
+            value={newDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Descripción"
+            value={newDescription}
+            onChangeText={setNewDescription}
+            style={styles.modalInput}
+          />
+        </>
+      );
+    default:
+      return (
+        <>
+          {storeSelector}
+          <TextInput
+            label="Monto"
+            value={newAmount}
+            onChangeText={(value) => {
+              const formattedValue = formatAmountInput(value);
+              setNewAmount(formattedValue);
+            }}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Fecha"
+            value={newDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Descripción"
+            value={newDescription}
+            onChangeText={setNewDescription}
+            style={styles.modalInput}
+          />
+        </>
+      );
   }
+}
   // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
     let dateToShow = item.date;
