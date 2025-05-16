@@ -849,6 +849,29 @@ const AdminScreen = () => {
         return (
           <>
             {storeSelector}
+
+            {/* Selector de tipo (nuevo) */}
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.modalInputLabel}>Tipo de transacción:</Text>
+              <SegmentedButtons
+                value={editingTransaction.type}
+                onValueChange={(value: string) => {
+                  // Verificamos que el valor sea uno de los permitidos antes de asignarlo
+                  if (value === 'income' || value === 'expense') {
+                    setEditingTransaction({
+                      ...editingTransaction,
+                      type: value as 'income' | 'expense'
+                    });
+                  }
+                }}
+                buttons={[
+                  { value: 'income', label: 'Ingreso' },
+                  { value: 'expense', label: 'Egreso' },
+                ]}
+                style={styles.storeSelector}
+              />
+            </View>
+
             <TextInput
               label="Monto"
               value={newAmount}
