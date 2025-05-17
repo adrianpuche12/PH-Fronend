@@ -281,12 +281,30 @@ const DynamicFormScreen = () => {
       <Title style={styles.formSectionTitle}>Selecciona el tipo de transacción</Title>
       <RadioButton.Group
         onValueChange={(value) => handleInputChange('type', value)}
-        value={formData.type}
+        value={formData.type || ''}
       >
         <View style={styles.radioGroupContainer}>
-
+          <RadioButton.Item
+            label="Ingreso"
+            value="income"
+            style={styles.radioItem}
+            labelStyle={styles.radioLabel}
+            color="#D4A72B"
+          />
+          <RadioButton.Item
+            label="Egreso"
+            value="expense"
+            style={styles.radioItem}
+            labelStyle={styles.radioLabel}
+            color="#D4A72B"
+          />
         </View>
       </RadioButton.Group>
+      {errors.type && (
+        <HelperText type="error" visible={true}>
+          Debe seleccionar un tipo de transacción
+        </HelperText>
+      )}
 
       {/* Selector de local */}
       <StoreSelector
