@@ -50,15 +50,14 @@ const DynamicFormScreen = () => {
 
   const [formData, setFormData] = useState<FormDataType>({
     // Campos para transacciones
-    type: 'income',
+    type: '',
     amount: '',
     date: getCurrentFormattedDate(),
     description: '',
-    // Campos adicionales
     closingsCount: '',
     periodStart: '',
     periodEnd: '',
-    storeId: 1,
+    storeId: 0,
     supplier: '',
   });
 
@@ -117,11 +116,11 @@ const DynamicFormScreen = () => {
     handleInputChange('amount', '');
     handleInputChange('date', currentDate);
     handleInputChange('description', '');
-    handleInputChange('type', 'income');
+    handleInputChange('type', '');
     handleInputChange('closingsCount', '');
     handleInputChange('periodStart', '');
     handleInputChange('periodEnd', '');
-    handleInputChange('storeId', 1);
+    handleInputChange('storeId', 0);
     handleInputChange('supplier', '');
     setDateRange({
       startDate: undefined,
@@ -200,23 +199,8 @@ const DynamicFormScreen = () => {
   const validateForm = () => {
     const newErrors: { [key: string]: boolean } = {};
 
-    if (formType === 'transaction') {
-      if (!formData.amount) newErrors.amount = true;
-      if (!formData.date) newErrors.date = true;
-      if (!formData.description) newErrors.description = true;
-    } else if (formType === 'closing-deposits') {
-      if (!formData.amount) newErrors.amount = true;
-      if (!formData.date) newErrors.date = true;
-      if (!formData.periodStart) newErrors.periodStart = true;
-      if (!formData.periodEnd) newErrors.periodEnd = true;
-    } else if (formType === 'supplier-payments') {
-      if (!formData.amount) newErrors.amount = true;
-      if (!formData.supplier) newErrors.supplier = true;
-      if (!formData.date) newErrors.date = true;
-    } else if (formType === 'salary-payments') {
-      if (!formData.amount) newErrors.amount = true;
-      if (!formData.description) newErrors.description = true;
-      if (!formData.date) newErrors.date = true;
+    if (formType === 'transaction' && !formData.type) {
+      newErrors.type = true;
     }
 
     setErrors(newErrors);
@@ -300,20 +284,7 @@ const DynamicFormScreen = () => {
         value={formData.type}
       >
         <View style={styles.radioGroupContainer}>
-          <RadioButton.Item
-            label="Ingreso"
-            value="income"
-            style={styles.radioItem}
-            labelStyle={styles.radioLabel}
-            color="#D4A72B"
-          />
-          <RadioButton.Item
-            label="Egreso"
-            value="expense"
-            style={styles.radioItem}
-            labelStyle={styles.radioLabel}
-            color="#D4A72B"
-          />
+
         </View>
       </RadioButton.Group>
 
