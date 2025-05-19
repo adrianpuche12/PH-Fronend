@@ -69,4 +69,3 @@ jobs:
             docker run -d --name $CONTAINER_NAME -p 3000:3000 $IMAGE_VERSION
 
             echo "✅ Nuevo contenedor en ejecución: $CONTAINER_NAME"
-
