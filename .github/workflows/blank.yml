@@ -56,8 +56,12 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            VERSION="v${{ github.run_number }}"
+            IMAGE="baumanpeter/humberto:humbertofrontend-$VERSION"
+            CONTAINER="humbertofrontend-$VERSION"
+
             echo "📥 Iniciando despliegue remoto del frontend..."
-            docker pull $IMAGE_VERSION
+            docker pull $IMAGE
 
             echo "🧹 Eliminando versiones anteriores del contenedor (solo producción)..."
             docker ps -a --format "{{.Names}}" | grep "^humbertofrontend-v" | while read cname; do
@@ -65,7 +69,7 @@ jobs:
               docker rm "$cname" || true
             done
 
-            echo "🚀 Corriendo nuevo contenedor: $CONTAINER_NAME"
-            docker run -d --name $CONTAINER_NAME -p 3000:3000 $IMAGE_VERSION
+            echo "🚀 Corriendo nuevo contenedor: $CONTAINER"
+            docker run -d --name $CONTAINER -p 3000:3000 $IMAGE
 
-            echo "✅ Nuevo contenedor en ejecución: $CONTAINER_NAME"
+            echo "✅ Nuevo contenedor en ejecución: $CONTAINER"
