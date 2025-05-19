@@ -1,61 +1,71 @@
-name: Desplegar Frontend a Docker Hub
+name: Desplegar Frontend a Docker Hub y Servidor
 
 on:
   push:
     branches:
-      - master  # Ejecuta el workflow cuando hay un push a la rama "master"
-      - dev     # Ejecuta el workflow cuando hay un push a la rama "dev"
+      - master
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    environment: production  # Asigna el Environment llamado "production"
+    environment: production
 
     steps:
-      - name: Clonar repositorio
+      - name: Checkout del repositorio
         uses: actions/checkout@v4
 
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Iniciar sesión en Docker Hub
+      - name: Login en Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Obtener nombre de la rama
-        id: branch_name
+      - name: Definir nombre de la imagen y versión
         run: |
-          echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
-          echo "🔖 Rama detectada: ${GITHUB_REF#refs/heads/}"
-
-      - name: Definir etiqueta de imagen
-        run: |
-          echo "🔢 Configurando versión de la imagen..."
-          if [ "${{ env.BRANCH_NAME }}" = "master" ]; then
-            IMAGE_NAME="baumanpeter/humberto:humbertofrontend"
-          else
-            IMAGE_NAME="baumanpeter/humberto:humbertofrontend-dev"
-          fi
-          IMAGE_VERSION="$IMAGE_NAME-v${{ github.run_number }}"
+          IMAGE_NAME="baumanpeter/humberto:humbertofrontend"
+          VERSION="v${{ github.run_number }}"
+          IMAGE_VERSION="$IMAGE_NAME-$VERSION"
+          CONTAINER_NAME="humbertofrontend-$VERSION"
           echo "IMAGE_VERSION=$IMAGE_VERSION" >> $GITHUB_ENV
-          echo "✅ Imagen con versión: $IMAGE_VERSION"
+          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
+          echo "✅ Nombre de imagen: $IMAGE_VERSION"
+          echo "✅ Nombre de contenedor: $CONTAINER_NAME"
 
       - name: Verificar contenido del directorio
         run: ls -l .
 
       - name: Construir imagen Docker y cargarla localmente
         run: |
-          echo "🚀 Construyendo la imagen Docker para la rama ${{ env.BRANCH_NAME }}..."
-          docker buildx build --platform linux/amd64 --load -t $IMAGE_VERSION .
-          echo "✅ Imagen construida y cargada en Docker local."
+          echo "🚀 Construyendo la imagen Docker..."
+          docker buildx build --platform linux/amd64 --no-cache --load -t $IMAGE_VERSION .
+          echo "✅ Imagen construida y cargada localmente."
 
-      - name: Listar imágenes Docker (depuración)
-        run: docker images
-
-      - name: Subir imagen Docker a Docker Hub
+      - name: Subir imagen a Docker Hub
         run: |
           echo "📤 Subiendo la imagen a Docker Hub..."
           docker push $IMAGE_VERSION
-          echo "✅ Imagen subida exitosamente a Docker Hub para la rama ${{ env.BRANCH_NAME }}."
+          echo "✅ Imagen subida correctamente."
+
+      - name: Desplegar al servidor remoto
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo "📥 Iniciando despliegue remoto del frontend..."
+            docker pull $IMAGE_VERSION
+
+            echo "🧹 Eliminando versiones anteriores del contenedor (solo producción)..."
+            docker ps -a --format "{{.Names}}" | grep "^humbertofrontend-v" | while read cname; do
+              docker stop "$cname" || true
+              docker rm "$cname" || true
+            done
+
+            echo "🚀 Corriendo nuevo contenedor: $CONTAINER_NAME"
+            docker run -d --name $CONTAINER_NAME -p 3000:3000 $IMAGE_VERSION
+
+            echo "✅ Nuevo contenedor en ejecución: $CONTAINER_NAME"
