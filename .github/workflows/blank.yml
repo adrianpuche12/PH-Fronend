@@ -1,4 +1,4 @@
-name: Desplegar Frontend a Docker Hub y Servidor
+name: Desplegar Frontend Dev a Docker Hub y Servidor
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: development
 
     steps:
       - name: Checkout del repositorio
@@ -23,55 +23,45 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Definir nombre de la imagen y versión
+      - name: Definir nombre de imagen y versión (Dev)
         run: |
-          IMAGE_NAME="baumanpeter/humberto:humbertofrontend"
-          VERSION="v${{ github.run_number }}"
-          IMAGE_VERSION="$IMAGE_NAME-$VERSION"
-          CONTAINER_NAME="humbertofrontend-$VERSION"
-          echo "IMAGE_VERSION=$IMAGE_VERSION" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
-          echo "✅ Nombre de imagen: $IMAGE_VERSION"
-          echo "✅ Nombre de contenedor: $CONTAINER_NAME"
+          IMAGE_NAME="baumanpeter/humberto:humbertofrontend-dev-v${{ github.run_number }}"
+          echo "IMAGE_VERSION=$IMAGE_NAME" >> $GITHUB_ENV
+          echo "✅ Imagen de desarrollo: $IMAGE_NAME"
 
       - name: Verificar contenido del directorio
         run: ls -l .
 
       - name: Construir imagen Docker y cargarla localmente
         run: |
-          echo "🚀 Construyendo la imagen Docker..."
+          echo "🚀 Construyendo imagen Docker..."
           docker buildx build --platform linux/amd64 --no-cache --load -t $IMAGE_VERSION .
           echo "✅ Imagen construida y cargada localmente."
 
       - name: Subir imagen a Docker Hub
         run: |
-          echo "📤 Subiendo la imagen a Docker Hub..."
+          echo "📤 Subiendo imagen a Docker Hub..."
           docker push $IMAGE_VERSION
           echo "✅ Imagen subida correctamente."
 
-      - name: Desplegar al servidor remoto
+      - name: Desplegar a Servidor Dev vía SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.DEV_SSH_HOST || secrets.SSH_HOST }}
+          username: ${{ secrets.DEV_SSH_USER || secrets.SSH_USER }}
+          key: ${{ secrets.DEV_SSH_KEY || secrets.SSH_KEY }}
+          envs: IMAGE_VERSION
           script: |
-            VERSION="v${{ github.run_number }}"
-            IMAGE="baumanpeter/humberto:humbertofrontend-$VERSION"
-            CONTAINER="humbertofrontend-$VERSION"
+            echo "📥 Iniciando despliegue remoto en ambiente de desarrollo..."
+            docker pull $IMAGE_VERSION
 
-            echo "📥 Iniciando despliegue remoto del frontend..."
-            docker pull $IMAGE
+            cd /root/Proyecto_H/DockerComposeHumberto-dev
 
-            echo "🧹 Eliminando versiones anteriores del contenedor (solo producción)..."
-            docker ps -a --format "{{.Names}}" | grep "^humbertofrontend-v" | while read cname; do
-              docker stop "$cname" || true
-              docker rm "$cname" || true
-            done
+            echo "🔄 Actualizando imagen en docker-compose.yml..."
+            sed -i "s|baumanpeter/humberto:humbertofrontend-dev-v[0-9]*|$IMAGE_VERSION|g" docker-compose.yml
 
-            echo "🚀 Corriendo nuevo contenedor: $CONTAINER"
-            docker run -d --name $CONTAINER -p 3000:3000 $IMAGE
+            echo "🛠 Ejecutando script de actualización..."
+            cd /root/Proyecto_H
+            ./update_all_services.sh
 
-            echo "✅ Nuevo contenedor en ejecución: $CONTAINER"
-
-            
+            echo "🚀 Despliegue de desarrollo completado."
