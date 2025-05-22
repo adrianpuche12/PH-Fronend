@@ -1,4 +1,4 @@
-name: Desplegar Frontend a Docker Hub
+name: Desplegar Frontend a Docker Hub y Servidor
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
       - dev     # Ejecuta el workflow cuando hay un push a la rama "dev"
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    environment: production  # Asigna el Environment llamado "production"
+    environment: production
 
     steps:
       - name: Clonar repositorio
@@ -30,24 +30,32 @@ jobs:
           echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
           echo "🔖 Rama detectada: ${GITHUB_REF#refs/heads/}"
 
-      - name: Definir etiqueta de imagen
+      - name: Definir etiqueta de imagen y directorio
         run: |
           echo "🔢 Configurando versión de la imagen..."
           if [ "${{ env.BRANCH_NAME }}" = "master" ]; then
             IMAGE_NAME="baumanpeter/humberto:humbertofrontend"
+            COMPOSE_DIR="/root/Proyecto_H/DockerComposeHumberto"
+            ENV_TYPE="PRODUCCIÓN"
           else
             IMAGE_NAME="baumanpeter/humberto:humbertofrontend-dev"
+            COMPOSE_DIR="/root/Proyecto_H/DockerComposeHumberto-dev"
+            ENV_TYPE="DESARROLLO"
           fi
           IMAGE_VERSION="$IMAGE_NAME-v${{ github.run_number }}"
           echo "IMAGE_VERSION=$IMAGE_VERSION" >> $GITHUB_ENV
-          echo "✅ Imagen con versión: $IMAGE_VERSION"
+          echo "COMPOSE_DIR=$COMPOSE_DIR" >> $GITHUB_ENV
+          echo "ENV_TYPE=$ENV_TYPE" >> $GITHUB_ENV
+          echo "✅ Imagen: $IMAGE_VERSION"
+          echo "✅ Directorio: $COMPOSE_DIR"
+          echo "✅ Ambiente: $ENV_TYPE"
 
       - name: Verificar contenido del directorio
         run: ls -l .
 
       - name: Construir imagen Docker y cargarla localmente
         run: |
-          echo "🚀 Construyendo la imagen Docker para la rama ${{ env.BRANCH_NAME }}..."
+          echo "🚀 Construyendo la imagen Docker para ${{ env.ENV_TYPE }} (${{ env.BRANCH_NAME }})..."
           docker buildx build --platform linux/amd64 --load -t $IMAGE_VERSION .
           echo "✅ Imagen construida y cargada en Docker local."
 
@@ -58,4 +66,48 @@ jobs:
         run: |
           echo "📤 Subiendo la imagen a Docker Hub..."
           docker push $IMAGE_VERSION
-          echo "✅ Imagen subida exitosamente a Docker Hub para la rama ${{ env.BRANCH_NAME }}."
+          echo "✅ Imagen subida exitosamente a Docker Hub para ${{ env.ENV_TYPE }}."
+
+      - name: Desplegar al servidor remoto y actualizar servicios
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: IMAGE_VERSION,BRANCH_NAME,COMPOSE_DIR,ENV_TYPE
+          script: |
+            echo "📥 Iniciando despliegue remoto para $ENV_TYPE (rama: $BRANCH_NAME)..."
+            
+            # Hacer pull de la nueva imagen
+            echo "📦 Descargando nueva imagen Docker..."
+            docker pull $IMAGE_VERSION
+            
+            # Navegar al directorio correcto según el ambiente
+            echo "📂 Navegando a directorio: $COMPOSE_DIR"
+            cd $COMPOSE_DIR
+            
+            # Actualizar la imagen en docker-compose.yml según el ambiente
+            echo "🔄 Actualizando imagen en docker-compose.yml para $ENV_TYPE..."
+            if [ "$BRANCH_NAME" = "master" ]; then
+              # Ambiente de producción
+              sed -i "s|baumanpeter/humberto:humbertofrontend-v[0-9]*|$IMAGE_VERSION|g" docker-compose.yml
+              echo "✅ Actualizada imagen de producción en DockerComposeHumberto"
+            else
+              # Ambiente de desarrollo
+              sed -i "s|baumanpeter/humberto:humbertofrontend-dev-v[0-9]*|$IMAGE_VERSION|g" docker-compose.yml
+              echo "✅ Actualizada imagen de desarrollo en DockerComposeHumberto-dev"
+            fi
+            
+            # Mostrar cambios realizados
+            echo "🔍 Verificando cambios en docker-compose.yml:"
+            grep "baumanpeter/humberto" docker-compose.yml || echo "No se encontró la imagen en el archivo"
+            
+            # Ejecutar el script de actualización
+            echo "🛠 Ejecutando script de actualización de servicios..."
+            cd /root/Proyecto_H
+            chmod +x update_all_services.sh
+            ./update_all_services.sh
+            
+            echo "🚀 Despliegue completado exitosamente para $ENV_TYPE"
+            echo "✅ Todos los servicios han sido actualizados y reiniciados"
+            echo "📍 Directorio utilizado: $COMPOSE_DIR"
