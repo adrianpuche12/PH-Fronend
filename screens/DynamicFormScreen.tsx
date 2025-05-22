@@ -215,7 +215,7 @@ const DynamicFormScreen = () => {
 
     const isValid = validateForm();
     if (!isValid) {
-      showMessage('error', 'Todos los campos son obligatorios.');
+      showMessage('error', 'Todos los campos son obligatorios');
       return;
     }
 
