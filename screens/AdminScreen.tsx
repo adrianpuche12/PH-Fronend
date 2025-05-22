@@ -1093,7 +1093,7 @@ const renderEditFields = () => {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>Todas las Operaciones</ThemedText>
+      <ThemedText style={styles.title}>Todas las Operaciones.</ThemedText>
 
       {/* Botón de Logout */}
       <LogoutButton />
