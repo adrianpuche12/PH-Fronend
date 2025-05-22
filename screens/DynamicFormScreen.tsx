@@ -257,7 +257,7 @@ const DynamicFormScreen = () => {
   };
 
   const renderSupplierList = () => {
-    const suppliers = ['Pollo Rey', 'Pollo Cortijo', 'Pollo Bravo'];
+    const suppliers = ['Pollo Rey', 'Pollo Cortijo', 'Pago a Proveedor de Frescos'];
     return (
       <View style={styles.supplierListContainer}>
         {suppliers.map((supplier) => (
