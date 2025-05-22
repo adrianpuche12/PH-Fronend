@@ -215,7 +215,7 @@ const DynamicFormScreen = () => {
 
     const isValid = validateForm();
     if (!isValid) {
-      showMessage('error', 'Todos los campos son obligatorios.');
+      showMessage('error', 'Todos los campos son obligatorios');
       return;
     }
 
@@ -226,6 +226,7 @@ const DynamicFormScreen = () => {
 
       const formToSend = {
         ...formData,
+        
         amount: amount,
         store: { id: formData.storeId },
         username: "default_user",
