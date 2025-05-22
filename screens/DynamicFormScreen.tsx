@@ -226,6 +226,7 @@ const DynamicFormScreen = () => {
 
       const formToSend = {
         ...formData,
+        
         amount: amount,
         store: { id: formData.storeId },
         username: "default_user",
