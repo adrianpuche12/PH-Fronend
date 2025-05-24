@@ -25,6 +25,7 @@ if (typeof window !== 'undefined' && window.location && window.location.hostname
 // Configurar URLs basadas en el host
 let keycloakAdapterUrl, apiUrl;
 
+/*
 if (currentHost === '157.173.204.202') {
     // Configuración para el servidor original
     keycloakAdapterUrl = 'http://157.173.204.202:8089';
@@ -37,6 +38,20 @@ if (currentHost === '157.173.204.202') {
     // Configuración para desarrollo local u otros entornos
     keycloakAdapterUrl = 'http://localhost:8088';
     apiUrl = 'http://localhost:8080';
+}
+*/
+
+
+if (currentHost === '157.173.204.202') {
+    if (window.location.port === '8054') {
+        // DESARROLLO (frontend en puerto 8054)
+        keycloakAdapterUrl = 'http://157.173.204.202:8094';  // Adapter dev
+        apiUrl = 'http://157.173.204.202:8098';              // Backend dev ✅
+    } else {
+        // PRODUCCIÓN (frontend en puerto 8052)
+        keycloakAdapterUrl = 'http://157.173.204.202:8089';  // Adapter prod  
+        apiUrl = 'http://157.173.204.202:8099';              // Backend prod
+    }
 }
 
 // Exportar las constantes
