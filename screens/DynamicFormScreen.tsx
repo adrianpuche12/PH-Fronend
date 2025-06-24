@@ -6,7 +6,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  StatusBar
+  StatusBar,
+  TouchableOpacity,
+  Text
 } from 'react-native';
 import {
   TextInput,
@@ -45,6 +47,8 @@ const DynamicFormScreen = () => {
     periodEnd: string;
     storeId: number;
     supplier: string;
+    porcentajeDanli: number;
+    porcentajeParaiso: number;
     [key: string]: any;
   }
 
@@ -59,6 +63,8 @@ const DynamicFormScreen = () => {
     periodEnd: '',
     storeId: 0,
     supplier: '',
+    porcentajeDanli: 50,
+    porcentajeParaiso: 50,
   });
 
   const [datePickerVisible, setDatePickerVisible] = useState(false);
@@ -72,7 +78,7 @@ const DynamicFormScreen = () => {
     endDate: undefined,
   });
 
-  const [formType, setFormType] = useState<'transaction' | 'closing-deposits' | 'supplier-payments' | 'salary-payments' | ''>('');
+  const [formType, setFormType] = useState<'transaction' | 'closing-deposits' | 'supplier-payments' | 'salary-payments' | 'gasto-admin' | ''>('');
   const [showMessageCard, setShowMessageCard] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
@@ -122,6 +128,8 @@ const DynamicFormScreen = () => {
     handleInputChange('periodEnd', '');
     handleInputChange('storeId', 0);
     handleInputChange('supplier', '');
+    handleInputChange('porcentajeDanli', 50);
+    handleInputChange('porcentajeParaiso', 50);
     setDateRange({
       startDate: undefined,
       endDate: undefined,
@@ -203,6 +211,18 @@ const DynamicFormScreen = () => {
       newErrors.type = true;
     }
 
+    if (formType === 'gasto-admin') {
+      if (!formData.type) newErrors.type = true;
+      if (!formData.amount || parseFloat(formData.amount.replace(/,/g, '')) <= 0) newErrors.amount = true;
+      if (!formData.description.trim()) newErrors.description = true;
+      if (!formData.date) newErrors.date = true;
+
+      // Validación especial: porcentajes deben sumar 100%
+      if ((formData.porcentajeDanli + formData.porcentajeParaiso) !== 100) {
+        newErrors.porcentajes = true;
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -220,21 +240,40 @@ const DynamicFormScreen = () => {
     }
 
     try {
-      const url = formType === 'transaction' ? TRANSACTIONS_URL : `${BACKEND_URL}/${formType}`;
+
+      let url;
+      if (formType === 'transaction') {
+        url = TRANSACTIONS_URL;
+      } else if (formType === 'gasto-admin') {
+        url = `${BACKEND_URL}/gasto-admin`;
+      } else {
+        url = `${BACKEND_URL}/${formType}`;
+      }
       const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
       const amount = parseFloat(amountValue);
 
-      const formToSend = {
-        ...formData,
-        
-        amount: amount,
-        store: { id: formData.storeId },
-        username: "default_user",
-        date: formData.date,
-        salaryDate: formData.date,
-        paymentDate: formData.date,
-        depositDate: formData.date
-      };
+      let formToSend;
+      if (formType === 'gasto-admin') {
+        formToSend = {
+          fecha: formData.date,
+          monto: amount,
+          descripcion: formData.description.trim(),
+          tipo: formData.type,
+          porcentajeDanli: formData.porcentajeDanli,
+          porcentajeParaiso: formData.porcentajeParaiso
+        };
+      } else {
+        formToSend = {
+          ...formData,
+          amount: amount,
+          store: { id: formData.storeId },
+          username: "default_user",
+          date: formData.date,
+          salaryDate: formData.date,
+          paymentDate: formData.date,
+          depositDate: formData.date
+        };
+      }
 
 
       const response = await fetch(url, {
@@ -244,7 +283,12 @@ const DynamicFormScreen = () => {
       });
 
       if (response.ok) {
-        showMessage('success', 'Datos enviados correctamente');
+        if (formType === 'gasto-admin') {
+          const result = await response.json();
+          showMessage('success', `${result.mensaje} (ID: ${result.gastoAdminId})`);
+        } else {
+          showMessage('success', 'Datos enviados correctamente');
+        }
         clearData();
         setFormType('');
         setErrors({});
@@ -347,10 +391,230 @@ const DynamicFormScreen = () => {
     </>
   );
 
+  const renderGastoAdminForm = () => (
+    <>
+      <Title style={styles.formSectionTitle}>Selecciona el tipo de transacción</Title>
+      <RadioButton.Group
+        onValueChange={(value) => handleInputChange('type', value)}
+        value={formData.type}
+      >
+        <View style={styles.radioGroupContainer}>
+          <RadioButton.Item
+            label="Ingreso"
+            value="income"
+            style={styles.radioItem}
+            labelStyle={styles.radioLabel}
+            color="#D4A72B"
+          />
+          <RadioButton.Item
+            label="Egreso"
+            value="expense"
+            style={styles.radioItem}
+            labelStyle={styles.radioLabel}
+            color="#D4A72B"
+          />
+        </View>
+      </RadioButton.Group>
+      {errors.type && (
+        <HelperText type="error" visible={true}>
+          Debe seleccionar un tipo de transacción
+        </HelperText>
+      )}
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          label="Monto Total"
+          value={formData.amount}
+          onChangeText={(value) => handleInputChange('amount', value)}
+          keyboardType="decimal-pad"
+          mode="outlined"
+          style={styles.input}
+          error={errors.amount}
+          left={<TextInput.Icon icon="cash-multiple" color="#D4A72B" />}
+          outlineColor="#DDDDDD"
+          activeOutlineColor="#D4A72B"
+          theme={{ colors: { primary: '#D4A72B' } }}
+          placeholder="Monto a dividir entre locales"
+        />
+        {errors.amount && (
+          <HelperText type="error" visible={true}>
+            El monto debe ser mayor a 0
+          </HelperText>
+        )}
+      </View>
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          label="Fecha"
+          value={formData.date}
+          mode="outlined"
+          onFocus={() => {
+            setSelectedDateField('date');
+            setDatePickerVisible(true);
+          }}
+          style={styles.input}
+          error={errors.date}
+          left={<TextInput.Icon icon="calendar" color="#D4A72B" />}
+          outlineColor="#DDDDDD"
+          activeOutlineColor="#D4A72B"
+          theme={{ colors: { primary: '#D4A72B' } }}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <TextInput
+          label="Descripción"
+          value={formData.description}
+          onChangeText={(value) => handleInputChange('description', value)}
+          mode="outlined"
+          style={styles.input}
+          error={errors.description}
+          left={<TextInput.Icon icon="text" color="#D4A72B" />}
+          outlineColor="#DDDDDD"
+          activeOutlineColor="#D4A72B"
+          theme={{ colors: { primary: '#D4A72B' } }}
+          placeholder="Descripción del gasto administrativo"
+        />
+        {errors.description && (
+          <HelperText type="error" visible={true}>
+            La descripción es obligatoria
+          </HelperText>
+        )}
+      </View>
+
+      {/* División entre Locales */}
+      <View style={styles.divisionContainer}>
+        <Title style={styles.divisionTitle}>División entre Locales</Title>
+
+        {formData.amount && parseFloat(formData.amount.replace(/,/g, '')) > 0 && (
+          <Text style={styles.totalAmount}>
+            Monto a dividir: ${parseFloat(formData.amount.replace(/,/g, '')).toFixed(2)}
+          </Text>
+        )}
+
+        {/* Botones de división rápida */}
+        <View style={styles.quickButtonsContainer}>
+          <Text style={styles.quickButtonsLabel}>Divisiones rápidas:</Text>
+          <View style={styles.quickButtons}>
+            {[
+              { danli: 100, paraiso: 0, label: '100/0' },
+              { danli: 70, paraiso: 30, label: '70/30' },
+              { danli: 60, paraiso: 40, label: '60/40' },
+              { danli: 50, paraiso: 50, label: '50/50' },
+              { danli: 40, paraiso: 60, label: '40/60' },
+              { danli: 30, paraiso: 70, label: '30/70' },
+              { danli: 0, paraiso: 100, label: '0/100' }
+            ].map(preset => (
+              <TouchableOpacity
+                key={preset.label}
+                onPress={() => {
+                  handleInputChange('porcentajeDanli', preset.danli);
+                  handleInputChange('porcentajeParaiso', preset.paraiso);
+                }}
+                style={styles.quickButton}
+              >
+                <Text style={styles.quickButtonText}>{preset.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Configuración por local */}
+        <View style={styles.localesContainer}>
+
+          {/* Local Danli */}
+          <View style={styles.localCard}>
+            <Text style={styles.localName}>Danli</Text>
+            <View style={styles.percentageContainer}>
+              <TextInput
+                mode="outlined"
+                value={formData.porcentajeDanli.toString()}
+                onChangeText={(value) => {
+                  const numValue = parseInt(value) || 0;
+                  const validValue = Math.max(0, Math.min(100, numValue));
+                  handleInputChange('porcentajeDanli', validValue);
+                  handleInputChange('porcentajeParaiso', Math.max(0, 100 - validValue));
+                }}
+                keyboardType="numeric"
+                style={styles.percentageInput}
+                maxLength={3}
+                theme={{ colors: { primary: '#D4A72B' } }}
+              />
+              <Text style={styles.percentageSymbol}>%</Text>
+            </View>
+            {formData.amount && (
+              <Text style={styles.localAmount}>
+                ${((parseFloat(formData.amount.replace(/,/g, '')) || 0) * formData.porcentajeDanli / 100).toFixed(2)}
+              </Text>
+            )}
+          </View>
+
+          {/* Local El Paraíso */}
+          <View style={styles.localCard}>
+            <Text style={styles.localName}>El Paraíso</Text>
+            <View style={styles.percentageContainer}>
+              <TextInput
+                mode="outlined"
+                value={formData.porcentajeParaiso.toString()}
+                onChangeText={(value) => {
+                  const numValue = parseInt(value) || 0;
+                  const validValue = Math.max(0, Math.min(100, numValue));
+                  handleInputChange('porcentajeParaiso', validValue);
+                  handleInputChange('porcentajeDanli', Math.max(0, 100 - validValue));
+                }}
+                keyboardType="numeric"
+                style={styles.percentageInput}
+                maxLength={3}
+                theme={{ colors: { primary: '#D4A72B' } }}
+              />
+              <Text style={styles.percentageSymbol}>%</Text>
+            </View>
+            {formData.amount && (
+              <Text style={styles.localAmount}>
+                ${((parseFloat(formData.amount.replace(/,/g, '')) || 0) * formData.porcentajeParaiso / 100).toFixed(2)}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Validación de porcentajes */}
+        <View style={styles.validationContainer}>
+          {(formData.porcentajeDanli + formData.porcentajeParaiso) === 100 ? (
+            <Text style={styles.validationSuccess}>
+              ✅ Porcentajes válidos: {(formData.porcentajeDanli + formData.porcentajeParaiso)}%
+            </Text>
+          ) : (
+            <Text style={styles.validationError}>
+              ❌ Los porcentajes deben sumar 100% (actual: {(formData.porcentajeDanli + formData.porcentajeParaiso)}%)
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* Resumen */}
+      {formData.amount && formData.description && (formData.porcentajeDanli + formData.porcentajeParaiso) === 100 && (
+        <View style={styles.summaryContainer}>
+          <Title style={styles.summaryTitle}>Vista Previa</Title>
+          <Text style={styles.summaryText}>
+            <Text style={styles.summaryBold}>Se crearán 2 transacciones:</Text>
+          </Text>
+          <Text style={styles.summaryText}>
+            • Danli ({formData.porcentajeDanli}%): ${((parseFloat(formData.amount.replace(/,/g, '')) || 0) * formData.porcentajeDanli / 100).toFixed(2)}
+          </Text>
+          <Text style={styles.summaryText}>
+            • El Paraíso ({formData.porcentajeParaiso}%): ${((parseFloat(formData.amount.replace(/,/g, '')) || 0) * formData.porcentajeParaiso / 100).toFixed(2)}
+          </Text>
+        </View>
+      )}
+    </>
+  );
+
   const renderFormFields = () => {
     switch (formType) {
       case 'transaction':
         return renderTransactionForm();
+      case 'gasto-admin':
+        return renderGastoAdminForm();
       case 'closing-deposits':
         return (
           <>
@@ -623,6 +887,51 @@ const DynamicFormScreen = () => {
                   color="#D4A72B"
                 />
               </View>
+
+              <RadioButton.Group
+                onValueChange={(value: any) => setFormType(value)}
+                value={formType}
+              >
+                <View style={styles.operationTypeContainer}>
+                  <RadioButton.Item
+                    label="Transacción"
+                    value="transaction"
+                    style={styles.radioItem}
+                    labelStyle={styles.radioLabel}
+                    color="#D4A72B"
+                  />
+                  {/* 🆕 NUEVA OPCIÓN */}
+                  <RadioButton.Item
+                    label="Gasto Administrativo"
+                    value="gasto-admin"
+                    style={styles.radioItem}
+                    labelStyle={styles.radioLabel}
+                    color="#D4A72B"
+                  />
+                  <RadioButton.Item
+                    label="Depósito de Cierres"
+                    value="closing-deposits"
+                    style={styles.radioItem}
+                    labelStyle={styles.radioLabel}
+                    color="#D4A72B"
+                  />
+                  <RadioButton.Item
+                    label="Pago a Proveedores"
+                    value="supplier-payments"
+                    style={styles.radioItem}
+                    labelStyle={styles.radioLabel}
+                    color="#D4A72B"
+                  />
+                  <RadioButton.Item
+                    label="Salarios"
+                    value="salary-payments"
+                    style={styles.radioItem}
+                    labelStyle={styles.radioLabel}
+                    color="#D4A72B"
+                  />
+                </View>
+              </RadioButton.Group>
+
             </RadioButton.Group>
 
             {renderFormFields()}
@@ -694,6 +1003,7 @@ const DynamicFormScreen = () => {
       )}
     </KeyboardAvoidingView>
   );
+
 };
 
 const styles = StyleSheet.create({
@@ -821,7 +1131,135 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
     padding: 10,
     borderRadius: 8,
-  }
+  },
+
+  divisionContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: '#D4A72B',
+  },
+  divisionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#D4A72B',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  totalAmount: {
+    fontSize: 16,
+    color: '#007bff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  quickButtonsContainer: {
+    marginBottom: 15,
+  },
+  quickButtonsLabel: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  quickButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  quickButton: {
+    backgroundColor: '#e3f2fd',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#D4A72B',
+  },
+  quickButtonText: {
+    fontSize: 12,
+    color: '#1976d2',
+    fontWeight: '500',
+  },
+  localesContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 15,
+  },
+  localCard: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    alignItems: 'center',
+  },
+  localName: {
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#495057',
+    fontSize: 14,
+  },
+  percentageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  percentageInput: {
+    width: 60,
+    height: 40,
+    backgroundColor: 'white',
+    textAlign: 'center',
+  },
+  percentageSymbol: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#495057',
+    marginLeft: 4,
+  },
+  localAmount: {
+    color: '#007bff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  validationContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  validationSuccess: {
+    color: '#28a745',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  validationError: {
+    color: '#dc3545',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  summaryContainer: {
+    backgroundColor: '#e3f2fd',
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 15,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1976d2',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#1565c0',
+    marginBottom: 5,
+  },
+  summaryBold: {
+    fontWeight: 'bold',
+  },
 });
 
 export default DynamicFormScreen;
