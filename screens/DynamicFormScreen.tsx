@@ -212,7 +212,7 @@ const DynamicFormScreen = () => {
     }
 
     if (formType === 'gasto-admin') {
-      if (!formData.type) newErrors.type = true;
+      //if (!formData.type) newErrors.type = true;
       if (!formData.amount || parseFloat(formData.amount.replace(/,/g, '')) <= 0) newErrors.amount = true;
       if (!formData.description.trim()) newErrors.description = true;
       if (!formData.date) newErrors.date = true;
@@ -258,7 +258,7 @@ const DynamicFormScreen = () => {
           fecha: formData.date,
           monto: amount,
           descripcion: formData.description.trim(),
-          tipo: formData.type,
+          tipo: 'expense',
           porcentajeDanli: formData.porcentajeDanli,
           porcentajeParaiso: formData.porcentajeParaiso
         };
@@ -392,34 +392,7 @@ const DynamicFormScreen = () => {
   );
 
   const renderGastoAdminForm = () => (
-    <>
-      <Title style={styles.formSectionTitle}>Selecciona el tipo de transacción</Title>
-      <RadioButton.Group
-        onValueChange={(value) => handleInputChange('type', value)}
-        value={formData.type}
-      >
-        <View style={styles.radioGroupContainer}>
-          <RadioButton.Item
-            label="Ingreso"
-            value="income"
-            style={styles.radioItem}
-            labelStyle={styles.radioLabel}
-            color="#D4A72B"
-          />
-          <RadioButton.Item
-            label="Egreso"
-            value="expense"
-            style={styles.radioItem}
-            labelStyle={styles.radioLabel}
-            color="#D4A72B"
-          />
-        </View>
-      </RadioButton.Group>
-      {errors.type && (
-        <HelperText type="error" visible={true}>
-          Debe seleccionar un tipo de transacción
-        </HelperText>
-      )}
+    <>     
 
       <View style={styles.inputContainer}>
         <TextInput
