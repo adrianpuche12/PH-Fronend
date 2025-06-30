@@ -8,7 +8,8 @@ import {
   Animated,
   StatusBar,
   TouchableOpacity,
-  Text
+  Text,
+  Image
 } from 'react-native';
 import {
   TextInput,
@@ -21,16 +22,17 @@ import {
 } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
+import { launchImageLibrary } from 'react-native-image-picker';
 import ResponsiveButton from '@/components/ui/responsiveButton';
 import { REACT_APP_API_URL } from '../config';
 import StoreSelector from '@/components/StoreSelector';
 import { formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
 
-// Versión básica corregida (sin validación)
 const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
+  const [image, setImage] = useState<{ uri: string; name: string; type: string } | null>(null);
   const getCurrentFormattedDate = () => format(new Date(), 'yyyy-MM-dd');
   const parseDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -53,7 +55,6 @@ const DynamicFormScreen = () => {
   }
 
   const [formData, setFormData] = useState<FormDataType>({
-    // Campos para transacciones
     type: '',
     amount: '',
     date: getCurrentFormattedDate(),
@@ -78,6 +79,25 @@ const DynamicFormScreen = () => {
     endDate: undefined,
   });
 
+  const pickImage = () => {
+    launchImageLibrary(
+      { mediaType: 'photo', quality: 0.8 },
+      (response) => {
+        if (response.didCancel) return;
+        if (response.errorCode) {
+          showMessage('error', 'Error seleccionando imagen');
+          return;
+        }
+        const asset = response.assets![0];
+        setImage({
+          uri: asset.uri!,
+          name: asset.fileName || `photo.${asset.type?.split('/')[1]}`,
+          type: asset.type!,
+        });
+      }
+    );
+  };
+
   const [formType, setFormType] = useState<'transaction' | 'closing-deposits' | 'supplier-payments' | 'salary-payments' | 'gasto-admin' | ''>('');
   const [showMessageCard, setShowMessageCard] = useState(false);
   const [message, setMessage] = useState('');
@@ -91,8 +111,14 @@ const DynamicFormScreen = () => {
       ...prevData,
       date: getCurrentFormattedDate()
     }));
-
   }, []);
+
+  // Establecer tipo automáticamente para gasto-admin
+  useEffect(() => {
+    if (formType === 'gasto-admin') {
+      handleInputChange('type', 'expense');
+    }
+  }, [formType]);
 
   const showMessage = (type: 'success' | 'error', message: string) => {
     setMessage(message);
@@ -134,6 +160,7 @@ const DynamicFormScreen = () => {
       startDate: undefined,
       endDate: undefined,
     });
+    setImage(null);
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -159,7 +186,6 @@ const DynamicFormScreen = () => {
     setErrors((prevErrors) => ({ ...prevErrors, [field]: false }));
   };
 
-  // Manejador para fecha única (transacciones normales)
   const handleDateConfirm = (params: { date: Date | undefined }) => {
     if (params.date) {
       const formattedDate = format(params.date, 'yyyy-MM-dd');
@@ -173,7 +199,6 @@ const DynamicFormScreen = () => {
     setSelectedDateField('');
   };
 
-  // Manejador para rango de fechas (depósitos de cierre)
   const handleDateRangeConfirm = ({
     startDate,
     endDate
@@ -207,17 +232,17 @@ const DynamicFormScreen = () => {
   const validateForm = () => {
     const newErrors: { [key: string]: boolean } = {};
 
+    // Validación para transacciones
     if (formType === 'transaction' && !formData.type) {
       newErrors.type = true;
     }
 
+    // Validación para gastos administrativos
     if (formType === 'gasto-admin') {
-      //if (!formData.type) newErrors.type = true;
       if (!formData.amount || parseFloat(formData.amount.replace(/,/g, '')) <= 0) newErrors.amount = true;
       if (!formData.description.trim()) newErrors.description = true;
       if (!formData.date) newErrors.date = true;
-
-      // Validación especial: porcentajes deben sumar 100%
+      
       if ((formData.porcentajeDanli + formData.porcentajeParaiso) !== 100) {
         newErrors.porcentajes = true;
       }
@@ -235,68 +260,83 @@ const DynamicFormScreen = () => {
 
     const isValid = validateForm();
     if (!isValid) {
-      showMessage('error', 'Todos los campos son obligatorios');
+      showMessage('error', 'Por favor complete todos los campos requeridos');
       return;
     }
 
     try {
+      const url =
+        formType === 'transaction'
+          ? TRANSACTIONS_URL
+          : formType === 'gasto-admin'
+          ? `${BACKEND_URL}/gasto-admin`
+          : `${BACKEND_URL}/${formType}`;
 
-      let url;
-      if (formType === 'transaction') {
-        url = TRANSACTIONS_URL;
-      } else if (formType === 'gasto-admin') {
-        url = `${BACKEND_URL}/gasto-admin`;
-      } else {
-        url = `${BACKEND_URL}/${formType}`;
-      }
       const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
       const amount = parseFloat(amountValue);
+      
+      const basePayload: any =
+        formType === 'gasto-admin'
+          ? {
+              fecha: formData.date,
+              monto: amount,
+              descripcion: formData.description.trim(),
+              tipo: 'expense', // Siempre egreso para gastos administrativos
+              porcentajeDanli: formData.porcentajeDanli,
+              porcentajeParaiso: formData.porcentajeParaiso,
+            }
+          : {
+              ...formData,
+              amount,
+              store: { id: formData.storeId },
+              username: 'default_user',
+              date: formData.date,
+              salaryDate: formData.date,
+              paymentDate: formData.date,
+              depositDate: formData.date,
+            };
 
-      let formToSend;
-      if (formType === 'gasto-admin') {
-        formToSend = {
-          fecha: formData.date,
-          monto: amount,
-          descripcion: formData.description.trim(),
-          tipo: 'expense',
-          porcentajeDanli: formData.porcentajeDanli,
-          porcentajeParaiso: formData.porcentajeParaiso
-        };
+      let response: Response;
+
+      if (image) {
+        const multipart = new FormData();
+        Object.entries(basePayload).forEach(([key, value]) => {
+          multipart.append(key, String(value));
+        });
+        multipart.append('file', {
+          uri: image.uri,
+          name: image.name,
+          type: image.type,
+        } as any);
+
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+          body: multipart,
+        });
       } else {
-        formToSend = {
-          ...formData,
-          amount: amount,
-          store: { id: formData.storeId },
-          username: "default_user",
-          date: formData.date,
-          salaryDate: formData.date,
-          paymentDate: formData.date,
-          depositDate: formData.date
-        };
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(basePayload),
+        });
       }
 
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formToSend),
-      });
-
       if (response.ok) {
-        if (formType === 'gasto-admin') {
-          const result = await response.json();
-          showMessage('success', `${result.mensaje} (ID: ${result.gastoAdminId})`);
-        } else {
-          showMessage('success', 'Datos enviados correctamente');
-        }
+        const result = await response.json();
+        const msg =
+          formType === 'gasto-admin'
+            ? `${result.mensaje} (ID: ${result.gastoAdminId})`
+            : 'Datos enviados correctamente';
+        showMessage('success', msg);
         clearData();
         setFormType('');
         setErrors({});
       } else {
-        const error = await response.json();
-        showMessage('error', error.message || 'Error al enviar el formulario');
+        const err = await response.json();
+        showMessage('error', err.message || 'Error al enviar el formulario');
       }
-    } catch (error) {
+    } catch (err) {
       showMessage('error', 'No se pudo conectar con el servidor');
     }
   };
@@ -329,11 +369,28 @@ const DynamicFormScreen = () => {
         value={formData.type}
       >
         <View style={styles.radioGroupContainer}>
-
+          <RadioButton.Item
+            label="Ingreso"
+            value="income"
+            style={styles.radioItem}
+            labelStyle={styles.radioLabel}
+            color="#D4A72B"
+          />
+          <RadioButton.Item
+            label="Egreso"
+            value="expense"
+            style={styles.radioItem}
+            labelStyle={styles.radioLabel}
+            color="#D4A72B"
+          />
         </View>
       </RadioButton.Group>
+      {errors.type && (
+        <HelperText type="error" visible>
+          Debe seleccionar Ingreso o Egreso
+        </HelperText>
+      )}
 
-      {/* Selector de local */}
       <StoreSelector
         selectedStore={formData.storeId}
         onStoreChange={(storeId) => handleInputChange('storeId', storeId)}
@@ -393,6 +450,7 @@ const DynamicFormScreen = () => {
 
   const renderGastoAdminForm = () => (
     <>     
+      
 
       <View style={styles.inputContainer}>
         <TextInput
@@ -455,7 +513,6 @@ const DynamicFormScreen = () => {
         )}
       </View>
 
-      {/* División entre Locales */}
       <View style={styles.divisionContainer}>
         <Title style={styles.divisionTitle}>División entre Locales</Title>
 
@@ -465,7 +522,6 @@ const DynamicFormScreen = () => {
           </Text>
         )}
 
-        {/* Botones de división rápida */}
         <View style={styles.quickButtonsContainer}>
           <Text style={styles.quickButtonsLabel}>Divisiones rápidas:</Text>
           <View style={styles.quickButtons}>
@@ -492,10 +548,7 @@ const DynamicFormScreen = () => {
           </View>
         </View>
 
-        {/* Configuración por local */}
         <View style={styles.localesContainer}>
-
-          {/* Local Danli */}
           <View style={styles.localCard}>
             <Text style={styles.localName}>Danli</Text>
             <View style={styles.percentageContainer}>
@@ -522,7 +575,6 @@ const DynamicFormScreen = () => {
             )}
           </View>
 
-          {/* Local El Paraíso */}
           <View style={styles.localCard}>
             <Text style={styles.localName}>El Paraíso</Text>
             <View style={styles.percentageContainer}>
@@ -550,7 +602,6 @@ const DynamicFormScreen = () => {
           </View>
         </View>
 
-        {/* Validación de porcentajes */}
         <View style={styles.validationContainer}>
           {(formData.porcentajeDanli + formData.porcentajeParaiso) === 100 ? (
             <Text style={styles.validationSuccess}>
@@ -564,7 +615,6 @@ const DynamicFormScreen = () => {
         </View>
       </View>
 
-      {/* Resumen */}
       {formData.amount && formData.description && (formData.porcentajeDanli + formData.porcentajeParaiso) === 100 && (
         <View style={styles.summaryContainer}>
           <Title style={styles.summaryTitle}>Vista Previa</Title>
@@ -591,7 +641,6 @@ const DynamicFormScreen = () => {
       case 'closing-deposits':
         return (
           <>
-            {/* Selector de local */}
             <StoreSelector
               selectedStore={formData.storeId}
               onStoreChange={(storeId) => handleInputChange('storeId', storeId)}
@@ -652,7 +701,6 @@ const DynamicFormScreen = () => {
               )}
             </View>
 
-            {/* Selector de rango de fechas unificado */}
             <View style={styles.inputContainer}>
               <TextInput
                 label="Periodo (Desde - Hasta)"
@@ -684,7 +732,6 @@ const DynamicFormScreen = () => {
             <Title style={styles.formSectionTitle}>Selecciona un proveedor</Title>
             {renderSupplierList()}
 
-            {/* Selector de local */}
             <StoreSelector
               selectedStore={formData.storeId}
               onStoreChange={(storeId) => handleInputChange('storeId', storeId)}
@@ -742,7 +789,6 @@ const DynamicFormScreen = () => {
       case 'salary-payments':
         return (
           <>
-            {/* Selector de local */}
             <StoreSelector
               selectedStore={formData.storeId}
               onStoreChange={(storeId) => handleInputChange('storeId', storeId)}
@@ -826,6 +872,7 @@ const DynamicFormScreen = () => {
             <Title style={styles.cardTitle}>Formulario de Operaciones</Title>
 
             <Title style={styles.formSectionTitle}>Seleccione tipo de operación</Title>
+            
             <RadioButton.Group
               onValueChange={(value: any) => setFormType(value)}
               value={formType}
@@ -834,6 +881,13 @@ const DynamicFormScreen = () => {
                 <RadioButton.Item
                   label="Transacción"
                   value="transaction"
+                  style={styles.radioItem}
+                  labelStyle={styles.radioLabel}
+                  color="#D4A72B"
+                />
+                <RadioButton.Item
+                  label="Gasto Administrativo"
+                  value="gasto-admin"
                   style={styles.radioItem}
                   labelStyle={styles.radioLabel}
                   color="#D4A72B"
@@ -860,54 +914,21 @@ const DynamicFormScreen = () => {
                   color="#D4A72B"
                 />
               </View>
-
-              <RadioButton.Group
-                onValueChange={(value: any) => setFormType(value)}
-                value={formType}
-              >
-                <View style={styles.operationTypeContainer}>
-                  <RadioButton.Item
-                    label="Transacción"
-                    value="transaction"
-                    style={styles.radioItem}
-                    labelStyle={styles.radioLabel}
-                    color="#D4A72B"
-                  />
-                  {/* 🆕 NUEVA OPCIÓN */}
-                  <RadioButton.Item
-                    label="Gasto Administrativo"
-                    value="gasto-admin"
-                    style={styles.radioItem}
-                    labelStyle={styles.radioLabel}
-                    color="#D4A72B"
-                  />
-                  <RadioButton.Item
-                    label="Depósito de Cierres"
-                    value="closing-deposits"
-                    style={styles.radioItem}
-                    labelStyle={styles.radioLabel}
-                    color="#D4A72B"
-                  />
-                  <RadioButton.Item
-                    label="Pago a Proveedores"
-                    value="supplier-payments"
-                    style={styles.radioItem}
-                    labelStyle={styles.radioLabel}
-                    color="#D4A72B"
-                  />
-                  <RadioButton.Item
-                    label="Salarios"
-                    value="salary-payments"
-                    style={styles.radioItem}
-                    labelStyle={styles.radioLabel}
-                    color="#D4A72B"
-                  />
-                </View>
-              </RadioButton.Group>
-
             </RadioButton.Group>
 
             {renderFormFields()}
+            
+            <View style={styles.inputContainer}>
+              <Button icon="image" mode="outlined" onPress={pickImage}>
+                {image ? 'Cambiar imagen' : 'Adjuntar imagen (opcional)'}
+              </Button>
+              {image && (
+                <Image
+                  source={{ uri: image.uri }}
+                  style={{ width: 100, height: 100, marginTop: 8, borderRadius: 8 }}
+                />
+              )}
+            </View>
 
             <View style={styles.buttonContainer}>
               <Button
@@ -936,7 +957,6 @@ const DynamicFormScreen = () => {
         </Card>
       </ScrollView>
 
-      {/* Selector de fecha individual (para transacciones) */}
       <DatePickerModal
         mode="single"
         visible={datePickerVisible}
@@ -947,7 +967,6 @@ const DynamicFormScreen = () => {
         validRange={{ startDate: undefined, endDate: new Date() }}
       />
 
-      {/* Selector de rango de fechas (para depósitos de cierres) */}
       <DatePickerModal
         mode="range"
         visible={dateRangePickerVisible}
@@ -976,7 +995,6 @@ const DynamicFormScreen = () => {
       )}
     </KeyboardAvoidingView>
   );
-
 };
 
 const styles = StyleSheet.create({
@@ -985,7 +1003,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   topSection: {
-    backgroundColor: '#FFF0A8', // Soft yellow background
+    backgroundColor: '#FFF0A8',
     paddingVertical: 30,
     alignItems: 'center',
     borderBottomLeftRadius: 30,
@@ -1007,7 +1025,7 @@ const styles = StyleSheet.create({
     borderColor: 'white',
   },
   welcomeText: {
-    color: '#8B7214', // Darker yellow/gold for contrast on light yellow
+    color: '#8B7214',
     fontSize: 28,
     fontWeight: 'bold',
     marginTop: 10,
@@ -1050,6 +1068,20 @@ const styles = StyleSheet.create({
   radioLabel: {
     fontSize: 16,
     color: '#444',
+  },
+  fixedTypeContainer: {
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#D4A72B',
+  },
+  fixedTypeLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#555',
   },
   supplierListContainer: {
     marginBottom: 15,
@@ -1105,7 +1137,6 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
   },
-
   divisionContainer: {
     backgroundColor: '#fff',
     padding: 15,
