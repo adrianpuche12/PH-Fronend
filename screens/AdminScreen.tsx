@@ -11,6 +11,7 @@ import {
   Modal,
   type ViewStyle,
   Animated,
+  Image,
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Title } from 'react-native-paper';
@@ -54,6 +55,8 @@ interface Transaction {
     id: number;
     name: string;
   };
+  // Nuevo campo para la URL de la imagen
+  imageUrl?: string;
 }
 
 
@@ -907,133 +910,175 @@ const renderEditFields = () => {
       );
   }
 }
+
+// Esta función puede ir en tu archivo de utils o en el mismo componente
+const buildImageUrl = (imagePath: string | undefined): string | null => {
+  if (!imagePath) return null;
+  
+  // Si ya es una URL completa (http o https)
+  if (/^https?:\/\//i.test(imagePath)) {
+    return imagePath;
+  }
+  
+  // Si es una ruta relativa (comienza con /)
+  if (imagePath.startsWith('/')) {
+    return `${REACT_APP_API_URL}${imagePath}`;
+  }
+  
+  // Para rutas relativas sin /
+  return `${REACT_APP_API_URL}/${imagePath}`;
+};
+
   // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
-    let dateToShow = item.date;
+  let dateToShow = item.date;
 
-    if (item.type === 'CLOSING' && item.depositDate) {
-      dateToShow = item.depositDate;
-    } else if (item.type === 'SUPPLIER' && item.paymentDate) {
-      dateToShow = item.paymentDate;
-    } else if (item.type === 'SALARY' && item.depositDate) {
-      dateToShow = item.depositDate;
-    }
+  if (item.type === 'CLOSING' && item.depositDate) {
+    dateToShow = item.depositDate;
+  } else if (item.type === 'SUPPLIER' && item.paymentDate) {
+    dateToShow = item.paymentDate;
+  } else if (item.type === 'SALARY' && item.depositDate) {
+    dateToShow = item.depositDate;
+  }
 
-    let typeIcon, typeColor;
+  let typeIcon, typeColor;
 
-    switch (item.type) {
-      case 'CLOSING':
-      case 'income':
-        typeIcon = 'arrow-down-bold-circle-outline';
-        typeColor = '#4CAF50';
-        break;
-      case 'SUPPLIER':
-      case 'SALARY':
-      case 'expense':
-        typeIcon = 'arrow-up-bold-circle-outline';
-        typeColor = '#F44336';
-        break;
-      default:
-        typeIcon = 'help-circle-outline';
-        typeColor = '#9E9E9E';
-    }
+  switch (item.type) {
+    case 'CLOSING':
+    case 'income':
+      typeIcon = 'arrow-down-bold-circle-outline';
+      typeColor = '#4CAF50';
+      break;
+    case 'SUPPLIER':
+    case 'SALARY':
+    case 'expense':
+      typeIcon = 'arrow-up-bold-circle-outline';
+      typeColor = '#F44336';
+      break;
+    default:
+      typeIcon = 'help-circle-outline';
+      typeColor = '#9E9E9E';
+  }
 
-    return (
-      <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
-        <Card.Content>
-          <View style={styles.transactionHeader}>
-            <View style={styles.transactionTypeContainer}>
-              <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
-              <Text style={[styles.transactionType, { color: typeColor }]}>
-                {TRANSACTION_LABELS[item.type]}
-              </Text>
-            </View>
-            <Text style={styles.transactionAmount}>
-              {formatCurrency(item.amount)}
+  return (
+    <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
+      <Card.Content>
+        <View style={styles.transactionHeader}>
+          <View style={styles.transactionTypeContainer}>
+            <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
+            <Text style={[styles.transactionType, { color: typeColor }]}>
+              {TRANSACTION_LABELS[item.type]}
             </Text>
           </View>
+          <Text style={styles.transactionAmount}>
+            {formatCurrency(item.amount)}
+          </Text>
+        </View>
 
-          <View style={styles.transactionDetails}>
-            {dateToShow && (
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="calendar" size={16} color="#8B7214" />
-                <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
-              </View>
-            )}
-
-            {item.description && (
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
-                <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
-              </View>
-            )}
-
-            {/* Mostrar local */}
+        <View style={styles.transactionDetails}>
+          {dateToShow && (
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>
-                {'Local: ' + (
-                  item.store?.name ||
-                  item.storeName ||
-                  (item.store?.id ?
-                    (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
-                    (item.storeId ?
-                      (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
-                      'No asignado'
-                    )
+              <MaterialCommunityIcons name="calendar" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
+            </View>
+          )}
+
+          {item.description && (
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
+            </View>
+          )}
+
+          {/* Mostrar local */}
+          <View style={styles.detailRow}>
+            <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
+            <Text style={styles.detailText}>
+              {'Local: ' + (
+                item.store?.name ||
+                item.storeName ||
+                (item.store?.id ?
+                  (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
+                  (item.storeId ?
+                    (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
+                    'No asignado'
                   )
-                )}
+                )
+              )}
+            </Text>
+          </View>
+          {/* Comprobante */}
+          {item.imageUrl ? (
+            <View style={{marginVertical: 10, borderWidth: 1, borderColor: '#eee', padding: 5, borderRadius: 8}}>
+              <Text style={{fontWeight: 'bold', marginBottom: 8, color: '#8B7214'}}>Comprobante:</Text>
+              <Image 
+                source={{uri: buildImageUrl(item.imageUrl) || ''}}
+                style={{width: '100%', height: 200, backgroundColor: '#f9f9f9'}}
+                resizeMode="contain"
+                onError={(e) => console.log("Error cargando imagen:", e.nativeEvent.error)}
+              />
+              <Text style={{marginTop: 5, fontSize: 12, color: '#666', textAlign: 'center'}}>
+                {buildImageUrl(item.imageUrl)}
               </Text>
             </View>
+          ) : (
+            <View style={{marginVertical: 8, padding: 5}}>
+              <Text style={{fontStyle: 'italic', color: '#888', textAlign: 'center'}}>
+                Sin comprobante adjunto
+              </Text>
+            </View>
+          )}
 
-            {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
-                <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
-              </View>
-            )}
+          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
+            </View>
+          )}
 
-            {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
-                <Text style={styles.detailText}>
-                  {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-                </Text>
-              </View>
-            )}
+          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>
+                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
+              </Text>
+            </View>
+          )}
 
-            {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
-              <View style={styles.detailRow}>
-                <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
-                <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
-              </View>
-            )}
-          </View>
+          {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
+            </View>
+          )}
+          
+          
+        </View>
 
-          <View style={styles.buttonContainer}>
-            <Button
-              mode="contained"
-              onPress={() => handleEdit(item)}
-              style={styles.editButton}
-              buttonColor="#2196F3"
-              icon="pencil"
-            >
-              Editar
-            </Button>
-            <Button
-              mode="contained"
-              onPress={() => handleDelete(item)}
-              style={styles.deleteButton}
-              buttonColor="#F44336"
-              icon="delete"
-            >
-              Eliminar
-            </Button>
-          </View>
-        </Card.Content>
-      </Card>
-    );
-  };
+        <View style={styles.buttonContainer}>
+          <Button
+            mode="contained"
+            onPress={() => handleEdit(item)}
+            style={styles.editButton}
+            buttonColor="#2196F3"
+            icon="pencil"
+          >
+            Editar
+          </Button>
+          <Button
+            mode="contained"
+            onPress={() => handleDelete(item)}
+            style={styles.deleteButton}
+            buttonColor="#F44336"
+            icon="delete"
+          >
+            Eliminar
+          </Button>
+        </View>
+      </Card.Content>
+    </Card>
+  );
+};
 
   const renderPagination = () => (
     <View style={styles.paginationContainer}>
@@ -1658,6 +1703,27 @@ const styles = StyleSheet.create({
   snackbar: {
     backgroundColor: '#333333',
     borderRadius: 10,
+  },
+  imageContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+  },
+  imageLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 5,
+    color: '#8B7214',
+  },
+  transactionImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    resizeMode: 'contain',
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
   },
 });
 

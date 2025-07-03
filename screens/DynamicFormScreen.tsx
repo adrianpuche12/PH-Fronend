@@ -253,93 +253,137 @@ const DynamicFormScreen = () => {
   };
 
   const handleSubmit = async () => {
-    if (!formType) {
-      showMessage('error', 'Por favor, seleccione un tipo de operación.');
-      return;
-    }
+  if (!formType) {
+    showMessage('error', 'Por favor, seleccione un tipo de operación.');
+    return;
+  }
 
-    const isValid = validateForm();
-    if (!isValid) {
-      showMessage('error', 'Por favor complete todos los campos requeridos');
-      return;
-    }
+  const isValid = validateForm();
+  if (!isValid) {
+    showMessage('error', 'Por favor complete todos los campos requeridos');
+    return;
+  }
 
-    try {
-      const url =
-        formType === 'transaction'
-          ? TRANSACTIONS_URL
-          : formType === 'gasto-admin'
-          ? `${BACKEND_URL}/gasto-admin`
-          : `${BACKEND_URL}/${formType}`;
+  try {
+    const url =
+      formType === 'transaction'
+        ? TRANSACTIONS_URL
+        : formType === 'gasto-admin'
+        ? `${BACKEND_URL}/gasto-admin`
+        : `${BACKEND_URL}/${formType}`;
 
-      const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
-      const amount = parseFloat(amountValue);
-      
-      const basePayload: any =
-        formType === 'gasto-admin'
-          ? {
-              fecha: formData.date,
-              monto: amount,
-              descripcion: formData.description.trim(),
-              tipo: 'expense', // Siempre egreso para gastos administrativos
-              porcentajeDanli: formData.porcentajeDanli,
-              porcentajeParaiso: formData.porcentajeParaiso,
-            }
-          : {
-              ...formData,
-              amount,
-              store: { id: formData.storeId },
-              username: 'default_user',
-              date: formData.date,
-              salaryDate: formData.date,
-              paymentDate: formData.date,
-              depositDate: formData.date,
-            };
+    const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
+    const amount = parseFloat(amountValue);
 
-      let response: Response;
+    // Payload base para todos los casos
+    const basePayload: any =
+      formType === 'gasto-admin'
+        ? {
+            fecha: formData.date,
+            monto: amount,
+            descripcion: formData.description.trim(),
+            tipo: 'expense',
+            porcentajeDanli: formData.porcentajeDanli,
+            porcentajeParaiso: formData.porcentajeParaiso,
+          }
+        : {
+            ...formData,
+            amount,
+            store: { id: formData.storeId },
+            username: 'default_user',
+            date: formData.date,
+            salaryDate: formData.date,
+            paymentDate: formData.date,
+            depositDate: formData.date,
+          };
 
+    let response: Response;
+
+    // Rama para gasto-admin: siempre multipart/form-data con part "datos"
+    if (formType === 'gasto-admin') {
+      const multipart = new FormData();
+
+      // Agrega un único part "datos" con todo el JSON
+      const datosBlob = new Blob(
+        [JSON.stringify(basePayload)],
+        { type: 'application/json' }
+      );
+      multipart.append('datos', datosBlob);
+
+      // Si hay imagen, la agregas en el part "file"
       if (image) {
-        const multipart = new FormData();
-        Object.entries(basePayload).forEach(([key, value]) => {
-          multipart.append(key, String(value));
-        });
         multipart.append('file', {
           uri: image.uri,
           name: image.name,
           type: image.type,
         } as any);
-
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { Accept: 'application/json' },
-          body: multipart,
-        });
-      } else {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(basePayload),
-        });
       }
 
-      if (response.ok) {
-        const result = await response.json();
-        const msg =
-          formType === 'gasto-admin'
-            ? `${result.mensaje} (ID: ${result.gastoAdminId})`
-            : 'Datos enviados correctamente';
-        showMessage('success', msg);
-        clearData();
-        setFormType('');
-        setErrors({});
-      } else {
-        const err = await response.json();
-        showMessage('error', err.message || 'Error al enviar el formulario');
-      }
-    } catch (err) {
-      showMessage('error', 'No se pudo conectar con el servidor');
+      console.log('⏳ Enviando multipart/form-data a', url);
+      console.log('Body (FormData):', multipart);
+
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { Accept: 'application/json' }, // NO Content-Type manual
+        body: multipart,
+      });
+    } else if (image) {
+      // Otros endpoints con imagen: si fuera el caso
+      const multipart = new FormData();
+      Object.entries(basePayload).forEach(([key, value]) => {
+        multipart.append(key, String(value));
+      });
+      multipart.append('file', {
+        uri: image.uri,
+        name: image.name,
+        type: image.type,
+      } as any);
+
+      console.log('⏳ Enviando multipart a', url);
+      console.log('Body (FormData):', multipart);
+
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: multipart,
+      });
+    } else {
+      // Rama JSON para el resto de endpoints
+      const jsonHeaders = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      };
+
+      console.log('⏳ Enviando JSON a', url);
+      console.log('Body (JSON):', basePayload);
+
+      response = await fetch(url, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify(basePayload),
+      });
     }
+
+    // Manejo de respuesta
+    if (response.ok) {
+      const result = await response.json();
+      const msg =
+        formType === 'gasto-admin'
+          ? `${result.mensaje} (ID: ${result.gastoAdminId})`
+          : 'Datos enviados correctamente';
+      showMessage('success', msg);
+      clearData();
+      setFormType('');
+      setErrors({});
+    } else {
+      const err = await response.json();
+      showMessage('error', err.message || 'Error al enviar el formulario');
+    }
+  } catch (err) {
+    showMessage('error', 'No se pudo conectar con el servidor');
+  }
   };
+
 
   const renderSupplierList = () => {
     const suppliers = ['Pollo Rey', 'Pollo Cortijo', 'Pago a Proveedor de Frescos'];
