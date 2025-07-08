@@ -15,19 +15,19 @@ import {
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Title } from 'react-native-paper';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '../components/ThemedView';
+import { ThemedText } from '../components/ThemedText';
 import { Button, TextInput, Snackbar, IconButton, SegmentedButtons } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { useFocusEffect } from '@react-navigation/native';
-import LogoutButton from '@/components/LogoutButton';
+import LogoutButton from '../components/LogoutButton';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { REACT_APP_API_URL } from '../config';
 import { format, parseISO } from 'date-fns';
-import ExcelManager from '@/components/ExcelManager';
+import ExcelManager from '../components/ExcelManager';
 import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
-import ImageViewer from '@/components/ImageViewer';
-import ImageButton from '@/components/ImageButton';
+import ImageViewer from '../components/ImageViewer';
+import ImageButton from '../components/ImageButton';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   income: 'Ingreso',

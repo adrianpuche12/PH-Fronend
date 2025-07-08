@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Image, Alert } from 'react-native';
 import { Button, Card, Text } from 'react-native-paper';
-import { ImageService } from '@/utils/ImageService';
+import { ImageService } from '../utils/ImageService';
 
 interface SelectedImage {
   uri: string;

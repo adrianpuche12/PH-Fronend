@@ -4,8 +4,8 @@ import { Button, IconButton } from 'react-native-paper';
 import { router } from 'expo-router';
 import TransactionsScreen from './TransactionsScreen';
 import AdminScreen from './AdminScreen';
-import LogoutButton from '@/components/LogoutButton';
-import { useAuth } from '@/context/AuthContext';
+import LogoutButton from '../components/LogoutButton';
+import { useAuth } from '../context/AuthContext';
 
 const AdminDashboard = () => {
   const [activeScreen, setActiveScreen] = useState<'transactions' | 'admin' | null>(null);

@@ -1,6 +1,6 @@
 import { Slot, useSegments, useRootNavigationState, router } from 'expo-router';
 import { useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 
 type ValidSegment = 'login' | 'admin' | 'index' | '(tabs)' | '+not-found';
 

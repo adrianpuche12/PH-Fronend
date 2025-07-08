@@ -22,12 +22,12 @@ import {
 } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
-import ResponsiveButton from '@/components/ui/responsiveButton';
+import ResponsiveButton from '../components/ui/responsiveButton';
 import { REACT_APP_API_URL } from '../config';
-import StoreSelector from '@/components/StoreSelector';
-import { formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
-import { ImageService } from '@/utils/ImageService';
-import ImagePicker from '@/components/ImagePicker';
+import StoreSelector from '../components/StoreSelector';
+import { formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
+import { ImageService } from '../utils/ImageService';
+import ImagePicker from '../components/ImagePicker';
 
 const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
@@ -864,7 +864,7 @@ const DynamicFormScreen = () => {
         <View style={styles.logoContainer}>
           <Avatar.Image
             size={100}
-            source={require('@/assets/images/logo_proyecto_Humberto.jpg')}
+            source={require('../assets/images/logo_proyecto_Humberto.jpg')}
             style={styles.logo}
           />
         </View>

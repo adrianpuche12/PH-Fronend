@@ -1,6 +1,6 @@
 import React from 'react';
 import { IconButton } from 'react-native-paper';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { StyleSheet } from 'react-native';
 
 const LogoutButton = () => {
