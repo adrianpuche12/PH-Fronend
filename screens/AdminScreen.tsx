@@ -25,7 +25,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { REACT_APP_API_URL } from '../config';
 import { format, parseISO } from 'date-fns';
 import ExcelManager from '../components/ExcelManager';
-import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
+import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
 import ImageViewer from '../components/ImageViewer';
 import ImageButton from '../components/ImageButton';
 
