@@ -22,17 +22,17 @@ import {
 } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { format } from 'date-fns';
-import { launchImageLibrary } from 'react-native-image-picker';
 import ResponsiveButton from '@/components/ui/responsiveButton';
 import { REACT_APP_API_URL } from '../config';
 import StoreSelector from '@/components/StoreSelector';
 import { formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
+import { ImageService } from '@/utils/ImageService';
+import ImagePicker from '@/components/ImagePicker';
 
 const BACKEND_URL = `${REACT_APP_API_URL}/api/forms`;
 const TRANSACTIONS_URL = `${REACT_APP_API_URL}/transactions`;
 
 const DynamicFormScreen = () => {
-  const [image, setImage] = useState<{ uri: string; name: string; type: string } | null>(null);
   const getCurrentFormattedDate = () => format(new Date(), 'yyyy-MM-dd');
   const parseDate = (dateString: string) => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -51,7 +51,14 @@ const DynamicFormScreen = () => {
     supplier: string;
     porcentajeDanli: number;
     porcentajeParaiso: number;
+    imageUri: string;
     [key: string]: any;
+  }
+
+  interface SelectedImage {
+    uri: string;
+    name: string;
+    type: string;
   }
 
   const [formData, setFormData] = useState<FormDataType>({
@@ -66,8 +73,10 @@ const DynamicFormScreen = () => {
     supplier: '',
     porcentajeDanli: 50,
     porcentajeParaiso: 50,
+    imageUri: '',
   });
 
+  const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [dateRangePickerVisible, setDateRangePickerVisible] = useState(false);
   const [selectedDateField, setSelectedDateField] = useState<'date' | ''>('');
@@ -78,25 +87,6 @@ const DynamicFormScreen = () => {
     startDate: undefined,
     endDate: undefined,
   });
-
-  const pickImage = () => {
-    launchImageLibrary(
-      { mediaType: 'photo', quality: 0.8 },
-      (response) => {
-        if (response.didCancel) return;
-        if (response.errorCode) {
-          showMessage('error', 'Error seleccionando imagen');
-          return;
-        }
-        const asset = response.assets![0];
-        setImage({
-          uri: asset.uri!,
-          name: asset.fileName || `photo.${asset.type?.split('/')[1]}`,
-          type: asset.type!,
-        });
-      }
-    );
-  };
 
   const [formType, setFormType] = useState<'transaction' | 'closing-deposits' | 'supplier-payments' | 'salary-payments' | 'gasto-admin' | ''>('');
   const [showMessageCard, setShowMessageCard] = useState(false);
@@ -156,11 +146,11 @@ const DynamicFormScreen = () => {
     handleInputChange('supplier', '');
     handleInputChange('porcentajeDanli', 50);
     handleInputChange('porcentajeParaiso', 50);
+    setSelectedImage(null);
     setDateRange({
       startDate: undefined,
       endDate: undefined,
     });
-    setImage(null);
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -253,137 +243,103 @@ const DynamicFormScreen = () => {
   };
 
   const handleSubmit = async () => {
-  if (!formType) {
-    showMessage('error', 'Por favor, seleccione un tipo de operación.');
-    return;
-  }
+    if (!formType) {
+      showMessage('error', 'Por favor, seleccione un tipo de operación.');
+      return;
+    }
 
-  const isValid = validateForm();
-  if (!isValid) {
-    showMessage('error', 'Por favor complete todos los campos requeridos');
-    return;
-  }
+    const isValid = validateForm();
+    if (!isValid) {
+      showMessage('error', 'Por favor complete todos los campos requeridos');
+      return;
+    }
 
-  try {
-    const url =
-      formType === 'transaction'
-        ? TRANSACTIONS_URL
-        : formType === 'gasto-admin'
-        ? `${BACKEND_URL}/gasto-admin`
-        : `${BACKEND_URL}/${formType}`;
+    try {
+      let imageUri = null;
 
-    const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
-    const amount = parseFloat(amountValue);
-
-    // Payload base para todos los casos
-    const basePayload: any =
-      formType === 'gasto-admin'
-        ? {
-            fecha: formData.date,
-            monto: amount,
-            descripcion: formData.description.trim(),
-            tipo: 'expense',
-            porcentajeDanli: formData.porcentajeDanli,
-            porcentajeParaiso: formData.porcentajeParaiso,
-          }
-        : {
-            ...formData,
-            amount,
-            store: { id: formData.storeId },
-            username: 'default_user',
-            date: formData.date,
-            salaryDate: formData.date,
-            paymentDate: formData.date,
-            depositDate: formData.date,
-          };
-
-    let response: Response;
-
-    // Rama para gasto-admin: siempre multipart/form-data con part "datos"
-    if (formType === 'gasto-admin') {
-      const multipart = new FormData();
-
-      // Agrega un único part "datos" con todo el JSON
-      const datosBlob = new Blob(
-        [JSON.stringify(basePayload)],
-        { type: 'application/json' }
-      );
-      multipart.append('datos', datosBlob);
-
-      // Si hay imagen, la agregas en el part "file"
-      if (image) {
-        multipart.append('file', {
-          uri: image.uri,
-          name: image.name,
-          type: image.type,
-        } as any);
+      if (selectedImage) {
+        const uploadResult = await ImageService.uploadImage(
+          selectedImage.uri,
+          selectedImage.name = ImageService.generateFileName('IMG'),
+          'comprobantes'
+        );
+        
+        if (uploadResult.success) {
+          imageUri = uploadResult.imageUri;
+        } else {
+          showMessage('error', 'Error al subir imagen: ' + uploadResult.error);
+          return;
+        }
       }
 
-      console.log('⏳ Enviando multipart/form-data a', url);
-      console.log('Body (FormData):', multipart);
+      const url =
+        formType === 'transaction'
+          ? TRANSACTIONS_URL
+          : formType === 'gasto-admin'
+          ? `${BACKEND_URL}/gasto-admin`
+          : `${BACKEND_URL}/${formType}`;
 
-      response = await fetch(url, {
+      const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
+      const amount = parseFloat(amountValue);
+
+      const basePayload: any =
+        formType === 'gasto-admin'
+          ? {
+              fecha: formData.date,
+              monto: amount,
+              descripcion: formData.description.trim(),
+              tipo: 'expense',
+              porcentajeDanli: formData.porcentajeDanli,
+              porcentajeParaiso: formData.porcentajeParaiso,
+              imageUri: imageUri,
+            }
+          : {
+              ...formData,
+              amount,
+              store: { id: formData.storeId },
+              username: 'default_user',
+              date: formData.date,
+              salaryDate: formData.date,
+              paymentDate: formData.date,
+              depositDate: formData.date,
+              imageUri: imageUri,
+            };
+
+      const response = await fetch(url, {
         method: 'POST',
-        headers: { Accept: 'application/json' }, // NO Content-Type manual
-        body: multipart,
-      });
-    } else if (image) {
-      // Otros endpoints con imagen: si fuera el caso
-      const multipart = new FormData();
-      Object.entries(basePayload).forEach(([key, value]) => {
-        multipart.append(key, String(value));
-      });
-      multipart.append('file', {
-        uri: image.uri,
-        name: image.name,
-        type: image.type,
-      } as any);
-
-      console.log('⏳ Enviando multipart a', url);
-      console.log('Body (FormData):', multipart);
-
-      response = await fetch(url, {
-        method: 'POST',
-        headers: { Accept: 'application/json' },
-        body: multipart,
-      });
-    } else {
-      // Rama JSON para el resto de endpoints
-      const jsonHeaders = {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      };
-
-      console.log('⏳ Enviando JSON a', url);
-      console.log('Body (JSON):', basePayload);
-
-      response = await fetch(url, {
-        method: 'POST',
-        headers: jsonHeaders,
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(basePayload),
       });
-    }
 
-    // Manejo de respuesta
-    if (response.ok) {
-      const result = await response.json();
-      const msg =
-        formType === 'gasto-admin'
-          ? `${result.mensaje} (ID: ${result.gastoAdminId})`
-          : 'Datos enviados correctamente';
-      showMessage('success', msg);
-      clearData();
-      setFormType('');
-      setErrors({});
-    } else {
-      const err = await response.json();
-      showMessage('error', err.message || 'Error al enviar el formulario');
+      if (response.ok) {
+        if (formType === 'gasto-admin') {
+          const result = await response.json();
+          showMessage('success', `${result.mensaje} (ID: ${result.gastoAdminId})`);
+        } else {
+          showMessage('success', 'Datos enviados correctamente');
+        }
+        clearData();
+        setFormType('');
+        setErrors({});
+      } else {
+        const error = await response.json();
+        showMessage('error', error.message || 'Error al enviar el formulario');
+      }
+    } catch (error) {
+      showMessage('error', 'No se pudo conectar con el servidor');
     }
-  } catch (err) {
-    showMessage('error', 'No se pudo conectar con el servidor');
-  }
   };
 
+  const renderImagePicker = () => (
+    <ImagePicker
+      onImageSelected={(image) => setSelectedImage(image)}
+      initialImage={selectedImage}
+      disabled={false}
+    />
+  );
 
   const renderSupplierList = () => {
     const suppliers = ['Pollo Rey', 'Pollo Cortijo', 'Pago a Proveedor de Frescos'];
@@ -489,6 +445,7 @@ const DynamicFormScreen = () => {
           theme={{ colors: { primary: '#D4A72B' } }}
         />
       </View>
+      {renderImagePicker()}
     </>
   );
 
@@ -673,6 +630,7 @@ const DynamicFormScreen = () => {
           </Text>
         </View>
       )}
+      {renderImagePicker()}
     </>
   );
 
@@ -768,6 +726,7 @@ const DynamicFormScreen = () => {
                 </HelperText>
               )}
             </View>
+            {renderImagePicker()}
           </>
         );
       case 'supplier-payments':
@@ -828,6 +787,7 @@ const DynamicFormScreen = () => {
                 theme={{ colors: { primary: '#D4A72B' } }}
               />
             </View>
+            {renderImagePicker()}
           </>
         );
       case 'salary-payments':
@@ -885,6 +845,7 @@ const DynamicFormScreen = () => {
                 theme={{ colors: { primary: '#D4A72B' } }}
               />
             </View>
+            {renderImagePicker()}
           </>
         );
       default:
@@ -962,18 +923,6 @@ const DynamicFormScreen = () => {
 
             {renderFormFields()}
             
-            <View style={styles.inputContainer}>
-              <Button icon="image" mode="outlined" onPress={pickImage}>
-                {image ? 'Cambiar imagen' : 'Adjuntar imagen (opcional)'}
-              </Button>
-              {image && (
-                <Image
-                  source={{ uri: image.uri }}
-                  style={{ width: 100, height: 100, marginTop: 8, borderRadius: 8 }}
-                />
-              )}
-            </View>
-
             <View style={styles.buttonContainer}>
               <Button
                 mode="contained"

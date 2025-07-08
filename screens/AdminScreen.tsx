@@ -26,6 +26,8 @@ import { REACT_APP_API_URL } from '../config';
 import { format, parseISO } from 'date-fns';
 import ExcelManager from '@/components/ExcelManager';
 import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
+import ImageViewer from '@/components/ImageViewer';
+import ImageButton from '@/components/ImageButton';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   income: 'Ingreso',
@@ -56,7 +58,7 @@ interface Transaction {
     name: string;
   };
   // Nuevo campo para la URL de la imagen
-  imageUrl?: string;
+  imageUri?: string;
 }
 
 
@@ -960,6 +962,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       typeColor = '#9E9E9E';
   }
 
+  const imageUri = item.imageUri || (item as any).image_uri;
+
   return (
     <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
       <Card.Content>
@@ -1007,25 +1011,21 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
               )}
             </Text>
           </View>
-          {/* Comprobante */}
-          {item.imageUrl ? (
-            <View style={{marginVertical: 10, borderWidth: 1, borderColor: '#eee', padding: 5, borderRadius: 8}}>
-              <Text style={{fontWeight: 'bold', marginBottom: 8, color: '#8B7214'}}>Comprobante:</Text>
-              <Image 
-                source={{uri: buildImageUrl(item.imageUrl) || ''}}
-                style={{width: '100%', height: 200, backgroundColor: '#f9f9f9'}}
-                resizeMode="contain"
-                onError={(e) => console.log("Error cargando imagen:", e.nativeEvent.error)}
-              />
-              <Text style={{marginTop: 5, fontSize: 12, color: '#666', textAlign: 'center'}}>
-                {buildImageUrl(item.imageUrl)}
+          {/* Mostrar período para CLOSING */}
+          {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>
+                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
               </Text>
             </View>
-          ) : (
-            <View style={{marginVertical: 8, padding: 5}}>
-              <Text style={{fontStyle: 'italic', color: '#888', textAlign: 'center'}}>
-                Sin comprobante adjunto
-              </Text>
+          )}
+          {/* Comprobante */}
+          {imageUri && (
+            <View style={styles.detailRow}>
+              <MaterialCommunityIcons name="image" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>Comprobante:</Text>
+              <ImageViewer imageUri={imageUri} size="small" />
             </View>
           )}
 
