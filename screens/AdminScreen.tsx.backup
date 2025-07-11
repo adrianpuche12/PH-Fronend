@@ -11,23 +11,20 @@ import {
   Modal,
   type ViewStyle,
   Animated,
-  Image,
 } from 'react-native';
 import { Card } from 'react-native-paper';
 import { Title } from 'react-native-paper';
-import { ThemedView } from '../components/ThemedView';
-import { ThemedText } from '../components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
 import { Button, TextInput, Snackbar, IconButton, SegmentedButtons } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 import { useFocusEffect } from '@react-navigation/native';
-import LogoutButton from '../components/LogoutButton';
+import LogoutButton from '@/components/LogoutButton';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { REACT_APP_API_URL } from '../config';
 import { format, parseISO } from 'date-fns';
-import ExcelManager from '../components/ExcelManager';
-import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
-import ImageViewer from '../components/ImageViewer';
-import ImageButton from '../components/ImageButton';
+import ExcelManager from '@/components/ExcelManager';
+import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '@/utils/numberFormat';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   income: 'Ingreso',
@@ -57,8 +54,6 @@ interface Transaction {
     id: number;
     name: string;
   };
-  // Nuevo campo para la URL de la imagen
-  imageUri?: string;
 }
 
 
@@ -335,6 +330,8 @@ const AdminScreen = () => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
 
+  const [showGastosAdminOnly, setShowGastosAdminOnly] = useState(false);
+
   // Manejador para éxito de importación desde Excel
   const handleImportSuccess = () => {
     fetchData(startDate, endDate, selectedStore);
@@ -343,7 +340,7 @@ const AdminScreen = () => {
   };
 
   // Función para obtener datos de dos endpoints y unificarlos.
-  const fetchData = async (start?: Date, end?: Date, storeId?: number | null) => {
+  const fetchData = async (start?: Date, end?: Date, storeId?: number | null, gastosAdminFilter?: boolean) => {
     setLoading(true);
     try {
       // Se obtienen las operaciones desde el endpoint de operaciones.
@@ -418,7 +415,8 @@ const AdminScreen = () => {
         }
       }
       // Se unen ambos arreglos
-      const merged = [...operationsData, ...transactionsData];
+      let merged = [...operationsData, ...transactionsData];
+
       const sortedTransactions = merged.sort((a, b) => {
         if (!a.date) return 1;
         if (!b.date) return -1;
@@ -437,11 +435,12 @@ const AdminScreen = () => {
     }
   };
 
-  useFocusEffect(
+   useFocusEffect(
     useCallback(() => {
-      fetchData(startDate, endDate, selectedStore);
-    }, [startDate, endDate, selectedStore])
+      fetchData(startDate, endDate, selectedStore, showGastosAdminOnly);
+    }, [startDate, endDate, selectedStore, showGastosAdminOnly])
   );
+  
 
   const onDismissDatePicker = () => {
     setDatePickerOpen(false);
@@ -912,173 +911,133 @@ const renderEditFields = () => {
       );
   }
 }
-
-// Esta función puede ir en tu archivo de utils o en el mismo componente
-const buildImageUrl = (imagePath: string | undefined): string | null => {
-  if (!imagePath) return null;
-  
-  // Si ya es una URL completa (http o https)
-  if (/^https?:\/\//i.test(imagePath)) {
-    return imagePath;
-  }
-  
-  // Si es una ruta relativa (comienza con /)
-  if (imagePath.startsWith('/')) {
-    return `${REACT_APP_API_URL}${imagePath}`;
-  }
-  
-  // Para rutas relativas sin /
-  return `${REACT_APP_API_URL}/${imagePath}`;
-};
-
   // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
-  let dateToShow = item.date;
+    let dateToShow = item.date;
 
-  if (item.type === 'CLOSING' && item.depositDate) {
-    dateToShow = item.depositDate;
-  } else if (item.type === 'SUPPLIER' && item.paymentDate) {
-    dateToShow = item.paymentDate;
-  } else if (item.type === 'SALARY' && item.depositDate) {
-    dateToShow = item.depositDate;
-  }
+    if (item.type === 'CLOSING' && item.depositDate) {
+      dateToShow = item.depositDate;
+    } else if (item.type === 'SUPPLIER' && item.paymentDate) {
+      dateToShow = item.paymentDate;
+    } else if (item.type === 'SALARY' && item.depositDate) {
+      dateToShow = item.depositDate;
+    }
 
-  let typeIcon, typeColor;
+    let typeIcon, typeColor;
 
-  switch (item.type) {
-    case 'CLOSING':
-    case 'income':
-      typeIcon = 'arrow-down-bold-circle-outline';
-      typeColor = '#4CAF50';
-      break;
-    case 'SUPPLIER':
-    case 'SALARY':
-    case 'expense':
-      typeIcon = 'arrow-up-bold-circle-outline';
-      typeColor = '#F44336';
-      break;
-    default:
-      typeIcon = 'help-circle-outline';
-      typeColor = '#9E9E9E';
-  }
+    switch (item.type) {
+      case 'CLOSING':
+      case 'income':
+        typeIcon = 'arrow-down-bold-circle-outline';
+        typeColor = '#4CAF50';
+        break;
+      case 'SUPPLIER':
+      case 'SALARY':
+      case 'expense':
+        typeIcon = 'arrow-up-bold-circle-outline';
+        typeColor = '#F44336';
+        break;
+      default:
+        typeIcon = 'help-circle-outline';
+        typeColor = '#9E9E9E';
+    }
 
-  const imageUri = item.imageUri || (item as any).image_uri;
-
-  return (
-    <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
-      <Card.Content>
-        <View style={styles.transactionHeader}>
-          <View style={styles.transactionTypeContainer}>
-            <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
-            <Text style={[styles.transactionType, { color: typeColor }]}>
-              {TRANSACTION_LABELS[item.type]}
+    return (
+      <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
+        <Card.Content>
+          <View style={styles.transactionHeader}>
+            <View style={styles.transactionTypeContainer}>
+              <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
+              <Text style={[styles.transactionType, { color: typeColor }]}>
+                {TRANSACTION_LABELS[item.type]}
+              </Text>
+            </View>
+            <Text style={styles.transactionAmount}>
+              {formatCurrency(item.amount)}
             </Text>
           </View>
-          <Text style={styles.transactionAmount}>
-            {formatCurrency(item.amount)}
-          </Text>
-        </View>
 
-        <View style={styles.transactionDetails}>
-          {dateToShow && (
+          <View style={styles.transactionDetails}>
+            {dateToShow && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="calendar" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
+              </View>
+            )}
+
+            {item.description && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
+              </View>
+            )}
+
+            {/* Mostrar local */}
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
-            </View>
-          )}
-
-          {item.description && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
-            </View>
-          )}
-
-          {/* Mostrar local */}
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
-            <Text style={styles.detailText}>
-              {'Local: ' + (
-                item.store?.name ||
-                item.storeName ||
-                (item.store?.id ?
-                  (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
-                  (item.storeId ?
-                    (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
-                    'No asignado'
+              <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>
+                {'Local: ' + (
+                  item.store?.name ||
+                  item.storeName ||
+                  (item.store?.id ?
+                    (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
+                    (item.storeId ?
+                      (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
+                      'No asignado'
+                    )
                   )
-                )
-              )}
-            </Text>
+                )}
+              </Text>
+            </View>
+
+            {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
+              </View>
+            )}
+
+            {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>
+                  {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
+                </Text>
+              </View>
+            )}
+
+            {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
+              </View>
+            )}
           </View>
-          {/* Mostrar período para CLOSING */}
-          {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>
-                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-              </Text>
-            </View>
-          )}
-          {/* Comprobante */}
-          {imageUri && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="image" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>Comprobante:</Text>
-              <ImageViewer imageUri={imageUri} size="small" />
-            </View>
-          )}
 
-          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
-            </View>
-          )}
-
-          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>
-                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-              </Text>
-            </View>
-          )}
-
-          {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
-            </View>
-          )}
-          
-          
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            onPress={() => handleEdit(item)}
-            style={styles.editButton}
-            buttonColor="#2196F3"
-            icon="pencil"
-          >
-            Editar
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => handleDelete(item)}
-            style={styles.deleteButton}
-            buttonColor="#F44336"
-            icon="delete"
-          >
-            Eliminar
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
-};
+          <View style={styles.buttonContainer}>
+            <Button
+              mode="contained"
+              onPress={() => handleEdit(item)}
+              style={styles.editButton}
+              buttonColor="#2196F3"
+              icon="pencil"
+            >
+              Editar
+            </Button>
+            <Button
+              mode="contained"
+              onPress={() => handleDelete(item)}
+              style={styles.deleteButton}
+              buttonColor="#F44336"
+              icon="delete"
+            >
+              Eliminar
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
 
   const renderPagination = () => (
     <View style={styles.paginationContainer}>
@@ -1703,27 +1662,6 @@ const styles = StyleSheet.create({
   snackbar: {
     backgroundColor: '#333333',
     borderRadius: 10,
-  },
-  imageContainer: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-  },
-  imageLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#8B7214',
-  },
-  transactionImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    resizeMode: 'contain',
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#EEEEEE',
   },
 });
 

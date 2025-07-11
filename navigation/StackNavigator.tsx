@@ -3,9 +3,9 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
 import FormScreen from '../screens/FormScreen';
 import TransactionsScreen from '../screens/TransactionsScreen';
-import DynamicFormScreen from '@/screens/DynamicFormScreen';
+import DynamicFormScreen from '../screens/DynamicFormScreen';
 import AdminScreen from '../screens/AdminScreen';
-import AdminDashboard from '@/screens/AdminDashboard';
+import AdminDashboard from '../screens/AdminDashboard';
 
 const Stack = createStackNavigator();
 

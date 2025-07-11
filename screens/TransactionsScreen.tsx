@@ -15,9 +15,9 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { Button, Snackbar, Checkbox } from 'react-native-paper';
 import FormScreen from './FormScreen';
-import ResponsiveButton from '@/components/ui/responsiveButton';
-import BalanceCalculator from '@/components/BalanceCalculator';
-import BalanceSummary from '@/components/BalanceSummary';
+import ResponsiveButton from '../components/ui/responsiveButton';
+import BalanceCalculator from '../components/BalanceCalculator';
+import BalanceSummary from '../components/BalanceSummary';
 import { REACT_APP_API_URL } from '../config';
 
 interface Transaction {

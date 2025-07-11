@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { router } from 'expo-router';
-import DynamicFormScreen from '@/screens/DynamicFormScreen';
-import LogoutButton from '@/components/LogoutButton';
-import { useAuth } from '@/context/AuthContext';
+import DynamicFormScreen from '../screens/DynamicFormScreen';
+import LogoutButton from '../components/LogoutButton';
+import { useAuth } from '../context/AuthContext';
 
 const UserDashboard = () => {
   const { roles, userName } = useAuth();
