@@ -366,7 +366,7 @@ const DynamicFormScreen = () => {
       <Title style={styles.formSectionTitle}>Selecciona el tipo de transacción</Title>
       <RadioButton.Group
         onValueChange={(value) => handleInputChange('type', value)}
-        value={formData.type || ''}
+        value={formData.type}
       >
         <View style={styles.radioGroupContainer}>
           <RadioButton.Item
