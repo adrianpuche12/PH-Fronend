@@ -35,12 +35,14 @@ const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   SALARY: 'Salario',
   SUPPLIER: 'Proveedor',
   CLOSING: 'Cierre',
+  GASTO_ADMIN: 'Gasto Administrativo',
+  gasto_admin: 'Gasto Administrativo',
 };
 
 // Actualizamos la interfaz para incluir los nuevos tipos
 interface Transaction {
   id: number;
-  type: 'CLOSING' | 'SUPPLIER' | 'SALARY' | 'income' | 'expense';
+  type: 'CLOSING' | 'SUPPLIER' | 'SALARY' | 'GASTO_ADMIN' | 'income' | 'expense' | 'gasto_admin';
   amount: number;
   date?: string;
   description?: string;
@@ -80,7 +82,7 @@ const CollapsibleBalanceCard = ({ transactions }: { transactions: any[] }) => {
     .filter(tx => tx.type === 'CLOSING' || tx.type === 'income')
     .reduce((sum, tx) => sum + tx.amount, 0);
   const egresos = transactions
-    .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'expense')
+    .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'GASTO_ADMIN' || tx.type === 'expense' || tx.type === 'gasto_admin')
     .reduce((sum, tx) => sum + tx.amount, 0);
   const total = ingresos - egresos;
 
@@ -135,7 +137,7 @@ const BalanceCard = ({ transactions }: { transactions: any[] }) => {
     .filter(tx => tx.type === 'CLOSING' || tx.type === 'income')
     .reduce((sum, tx) => sum + tx.amount, 0);
   const egresos = transactions
-    .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'expense')
+    .filter(tx => tx.type === 'SUPPLIER' || tx.type === 'SALARY' || tx.type === 'GASTO_ADMIN' || tx.type === 'expense' || tx.type === 'gasto_admin')
     .reduce((sum, tx) => sum + tx.amount, 0);
   const total = ingresos - egresos;
 
@@ -174,6 +176,8 @@ const CompactDateFilters = ({
   setDatePickerOpen,
   setSelectedDateInput,
   onExcelPress,
+  showAdminExpenses,
+  onToggleAdminExpenses,
 }: {
   startDate?: Date;
   endDate?: Date;
@@ -185,6 +189,8 @@ const CompactDateFilters = ({
   setDatePickerOpen: (open: boolean) => void;
   setSelectedDateInput: (input: 'start' | 'end') => void;
   onExcelPress: () => void;
+  showAdminExpenses: boolean;
+  onToggleAdminExpenses: () => void;
 }) => {
   const { width: screenWidth } = useWindowDimensions();
   const isLargeScreen = screenWidth >= 768;
@@ -254,7 +260,7 @@ const CompactDateFilters = ({
 
         {/* Botones */}
         <View style={isLargeScreen ? styles.buttonGroupWeb : styles.compactButtonsRow}>
-          {(startDate || endDate || selectedStore) && (
+          {(startDate || endDate || selectedStore || showAdminExpenses) && (
             <Button
               mode="outlined"
               compact
@@ -262,6 +268,9 @@ const CompactDateFilters = ({
                 setStartDate(undefined);
                 setEndDate(undefined);
                 setSelectedStore(null);
+                if (showAdminExpenses) {
+                  onToggleAdminExpenses();
+                }
               }}
               style={styles.compactClearButton}
               color="#D4A72B"
@@ -270,9 +279,26 @@ const CompactDateFilters = ({
             </Button>
           )}
           <Button
+            mode={showAdminExpenses ? "contained" : "outlined"}
+            compact
+            onPress={onToggleAdminExpenses}
+            style={styles.compactAdminButton}
+            icon="bank"
+            buttonColor={showAdminExpenses ? "#FF9800" : "transparent"}
+            textColor={showAdminExpenses ? "white" : "#FF9800"}
+          >
+            G. Admin
+          </Button>
+          <Button
             mode="contained"
             compact
-            onPress={() => fetchData(startDate, endDate, selectedStore)}
+            onPress={() => {
+              if (showAdminExpenses) {
+                fetchAdminExpenses(startDate, endDate, selectedStore);
+              } else {
+                fetchData(startDate, endDate, selectedStore);
+              }
+            }}
             style={styles.compactRefreshButton}
             icon="refresh"
             buttonColor="#2196F3"
@@ -304,6 +330,7 @@ const AdminScreen = () => {
   const [selectedDateInput, setSelectedDateInput] = useState<'start' | 'end'>('start');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStore, setSelectedStore] = useState<number | null>(null);
+  const [showAdminExpenses, setShowAdminExpenses] = useState(false);
 
   // Estados para el modal de edición
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -337,9 +364,62 @@ const AdminScreen = () => {
 
   // Manejador para éxito de importación desde Excel
   const handleImportSuccess = () => {
-    fetchData(startDate, endDate, selectedStore);
+    if (showAdminExpenses) {
+      fetchAdminExpenses(startDate, endDate, selectedStore);
+    } else {
+      fetchData(startDate, endDate, selectedStore);
+    }
     setSnackbarMessage('Operaciones importadas correctamente');
     setSnackbarVisible(true);
+  };
+
+  // Función para alternar el filtro de gastos administrativos
+  const handleToggleAdminExpenses = () => {
+    const newShowAdmin = !showAdminExpenses;
+    setShowAdminExpenses(newShowAdmin);
+    if (newShowAdmin) {
+      fetchAdminExpenses(startDate, endDate, selectedStore);
+    } else {
+      fetchData(startDate, endDate, selectedStore);
+    }
+  };
+
+  // Función para obtener solo gastos administrativos
+  const fetchAdminExpenses = async (start?: Date, end?: Date, storeId?: number | null) => {
+    setLoading(true);
+    try {
+      let url = `${REACT_APP_API_URL}/api/operations/admin-expenses`;
+      const queryParams = [];
+
+      if (start && end) {
+        const startStr = format(start, 'yyyy-MM-dd');
+        const endStr = format(end, 'yyyy-MM-dd');
+        queryParams.push(`startDate=${startStr}`);
+        queryParams.push(`endDate=${endStr}`);
+      }
+
+      if (storeId) {
+        queryParams.push(`storeId=${storeId}`);
+      }
+
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join('&')}`;
+      }
+
+      const response = await fetch(url);
+      let adminExpensesData: Transaction[] = [];
+
+      if (response.ok) {
+        adminExpensesData = await response.json();
+      }
+
+      setTransactions(adminExpensesData);
+      setCurrentPage(1);
+    } catch (err) {
+      console.error('Error al cargar los gastos administrativos:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Función para obtener datos de dos endpoints y unificarlos.
@@ -439,8 +519,12 @@ const AdminScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchData(startDate, endDate, selectedStore);
-    }, [startDate, endDate, selectedStore])
+      if (showAdminExpenses) {
+        fetchAdminExpenses(startDate, endDate, selectedStore);
+      } else {
+        fetchData(startDate, endDate, selectedStore);
+      }
+    }, [startDate, endDate, selectedStore, showAdminExpenses])
   );
 
   const onDismissDatePicker = () => {
@@ -514,8 +598,7 @@ const AdminScreen = () => {
     if (!transactionToDelete) return;
     try {
       let url = '';
-      // Para income y expense se usa el endpoint de transactions; para los demás, el de operaciones.
-      if (transactionToDelete.type === 'income' || transactionToDelete.type === 'expense') {
+      if (transactionToDelete.type === 'income' || transactionToDelete.type === 'expense' || transactionToDelete.type === 'gasto_admin') {
         url = `${REACT_APP_API_URL}/transactions/${transactionToDelete.id}`;
       } else {
         url = `${REACT_APP_API_URL}/api/operations/${transactionToDelete.type}/${transactionToDelete.id}`;
@@ -524,7 +607,11 @@ const AdminScreen = () => {
       if (response.ok) {
         setSnackbarMessage('La transacción ha sido eliminada correctamente.');
         setSnackbarVisible(true);
-        fetchData(startDate, endDate, selectedStore);
+        if (showAdminExpenses) {
+          fetchAdminExpenses(startDate, endDate, selectedStore);
+        } else {
+          fetchData(startDate, endDate, selectedStore);
+        }
       } else {
         Alert.alert('Error', 'No se pudo eliminar la transacción.');
       }
@@ -615,7 +702,7 @@ const AdminScreen = () => {
       console.log("Enviando datos:", JSON.stringify(updatedTransaction, null, 2));
 
       let url = '';
-      if (editingTransaction.type === 'income' || editingTransaction.type === 'expense') {
+      if (editingTransaction.type === 'income' || editingTransaction.type === 'expense' || editingTransaction.type === 'gasto_admin') {
         url = `${REACT_APP_API_URL}/transactions/${editingTransaction.id}`;
       } else {
         url = `${REACT_APP_API_URL}/api/operations/${editingTransaction.type}/${editingTransaction.id}`;
@@ -634,7 +721,11 @@ const AdminScreen = () => {
         setSnackbarVisible(true);
         setEditModalVisible(false);
         setEditingTransaction(null);
-        fetchData(startDate, endDate, selectedStore);
+        if (showAdminExpenses) {
+          fetchAdminExpenses(startDate, endDate, selectedStore);
+        } else {
+          fetchData(startDate, endDate, selectedStore);
+        }
       } else {
         const errorText = await response.text();
         console.error("Error response:", errorText);
@@ -814,6 +905,77 @@ const renderEditFields = () => {
           />
         </>
       );
+    case 'GASTO_ADMIN':
+      return (
+        <>
+          <TextInput
+            label="Monto"
+            value={newAmount}
+            onChangeText={(value) => {
+              const formattedValue = formatAmountInput(value);
+              setNewAmount(formattedValue);
+            }}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Fecha"
+            value={newDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Descripción"
+            value={newDescription}
+            onChangeText={setNewDescription}
+            style={styles.modalInput}
+          />
+        </>
+      );
+    case 'gasto_admin':
+      return (
+        <>
+          {storeSelector}
+          <TextInput
+            label="Monto"
+            value={newAmount}
+            onChangeText={(value) => {
+              const formattedValue = formatAmountInput(value);
+              setNewAmount(formattedValue);
+            }}
+            keyboardType="numeric"
+            style={styles.modalInput}
+          />
+          <TextInput
+            label="Fecha"
+            value={newDate}
+            style={styles.modalInput}
+            showSoftInputOnFocus={false}
+            onFocus={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }}
+            right={<TextInput.Icon icon="calendar" onPress={() => {
+              setDateEditField('date');
+              setDatePickerEditVisible(true);
+            }} />}
+          />
+          <TextInput
+            label="Descripción"
+            value={newDescription}
+            onChangeText={setNewDescription}
+            style={styles.modalInput}
+          />
+        </>
+      );
     case 'income':
     case 'expense':
       return (
@@ -953,7 +1115,9 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
       break;
     case 'SUPPLIER':
     case 'SALARY':
+    case 'GASTO_ADMIN':
     case 'expense':
+    case 'gasto_admin':
       typeIcon = 'arrow-up-bold-circle-outline';
       typeColor = '#F44336';
       break;
@@ -1157,6 +1321,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             setDatePickerOpen={setDatePickerOpen}
             setSelectedDateInput={setSelectedDateInput}
             onExcelPress={() => setShowExcelManager(true)}
+            showAdminExpenses={showAdminExpenses}
+            onToggleAdminExpenses={handleToggleAdminExpenses}
           />
           <CollapsibleBalanceCard transactions={transactions} />
         </View>
@@ -1175,6 +1341,8 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
             setDatePickerOpen={setDatePickerOpen}
             setSelectedDateInput={setSelectedDateInput}
             onExcelPress={() => setShowExcelManager(true)}
+            showAdminExpenses={showAdminExpenses}
+            onToggleAdminExpenses={handleToggleAdminExpenses}
           />
 
           {/* Balance General desplegable */}
@@ -1413,6 +1581,14 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     borderRadius: 30,
     height: 36,
+  },
+  compactAdminButton: {
+    flex: 1,
+    marginLeft: 5,
+    marginRight: 5,
+    borderRadius: 30,
+    height: 36,
+    borderColor: '#FF9800',
   },
 
   // Estilos para la selección de local
