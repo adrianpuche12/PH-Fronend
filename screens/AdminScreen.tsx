@@ -294,7 +294,7 @@ const CompactDateFilters = ({
             compact
             onPress={() => {
               if (showAdminExpenses) {
-                fetchAdminExpenses(startDate, endDate, selectedStore);
+                fetchData(startDate, endDate, selectedStore);
               } else {
                 fetchData(startDate, endDate, selectedStore);
               }
