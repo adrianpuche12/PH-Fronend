@@ -276,7 +276,7 @@ const DynamicFormScreen = () => {
         formType === 'transaction'
           ? TRANSACTIONS_URL
           : formType === 'gasto-admin'
-          ? `${BACKEND_URL}/api/gasto-admin`
+          ? `${REACT_APP_API_URL}/api/gasto-admin`
           : `${BACKEND_URL}/${formType}`;
 
       const amountValue = formData.amount ? formData.amount.replace(/,/g, '') : '0';
