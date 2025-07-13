@@ -17,7 +17,7 @@ if (currentHost === '157.173.204.202') {
     } else {
         // PRODUCCIÓN (frontend en puerto 8052)
         keycloakAdapterUrl = 'http://157.173.204.202:8089';  // Adapter prod  
-        apiUrl = 'http://157.173.204.202:8099';              // Backend prod
+        apiUrl = 'http://157.173.204.202:8089';              // Backend prod
         imageUrl = 'http://157.173.204.202:3030';
     }
 } else if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
