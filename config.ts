@@ -20,15 +20,22 @@ if (currentHost === '157.173.204.202') {
         imageUrl = 'http://157.173.204.202:3030';
     }
 } else if (currentHost === '178.18.253.253') {
-    // NUEVO SERVIDOR - PRODUCCIÓN (frontend en puerto 8052)
-    keycloakAdapterUrl = 'http://178.18.253.253:8089';      // Nginx proxy a Keycloak Adapter
-    apiUrl = 'http://178.18.253.253:8099';                  // Backend directo
-    imageUrl = 'http://178.18.253.253:3030';                // Servidor de imágenes (si existe)
+    if (window.location.port === '8054') {
+        // DESARROLLO NUEVO SERVIDOR (frontend en puerto 8054)
+        keycloakAdapterUrl = 'http://178.18.253.253:8092';   // Nginx proxy a Keycloak Adapter DEV
+        apiUrl = 'http://178.18.253.253:8097';               // Backend DEV directo
+        imageUrl = 'http://178.18.253.253:3030';             // Servidor de imágenes DEV
+    } else {
+        // PRODUCCIÓN NUEVO SERVIDOR (frontend en puerto 8052)
+        keycloakAdapterUrl = 'http://178.18.253.253:8089';   // Nginx proxy a Keycloak Adapter PROD
+        apiUrl = 'http://178.18.253.253:8099';               // Backend PROD directo
+        imageUrl = 'http://178.18.253.253:3030';             // Servidor de imágenes PROD
+    }
 } else if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
     // DESARROLLO LOCAL (frontend en localhost)
-    keycloakAdapterUrl = 'http://157.173.204.202:8092';     // Adapter dev
-    apiUrl = 'http://157.173.204.202:8097';                 // Backend dev ✅
-    imageUrl = 'http://157.173.204.202:3030';
+    keycloakAdapterUrl = 'http://178.18.253.253:8092';      // Adapter dev NUEVO SERVIDOR
+    apiUrl = 'http://178.18.253.253:8097';                  // Backend dev NUEVO SERVIDOR ✅
+    imageUrl = 'http://178.18.253.253:3030';
 }
 
 export const API_KEYCLOAK_ADAPTER_URL = keycloakAdapterUrl;
