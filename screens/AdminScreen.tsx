@@ -351,6 +351,9 @@ const AdminScreen = () => {
   const [newSupplier, setNewSupplier] = useState('');
   const [newStoreId, setNewStoreId] = useState<number>(1);
 
+  // ✅ CAMBIO 1: Agregar nuevo estado para controlar la selección del local
+  const [selectedLocal, setSelectedLocal] = useState('');
+
   // Snackbar
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -625,7 +628,7 @@ const AdminScreen = () => {
   };
   // -----------------------------------------------------------------------
 
-  // Función para editar: se llenan los campos del modal
+  // ✅ CAMBIO 2: Modificar handleEdit para NO establecer local por defecto
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setNewAmount(transaction.amount.toString());
@@ -647,15 +650,28 @@ const AdminScreen = () => {
     setNewPeriodStart(transaction.periodStart ?? '');
     setNewPeriodEnd(transaction.periodEnd ?? '');
     setNewSupplier(transaction.supplier ?? '');
-    setNewStoreId(transaction.store?.id || 1);
+
+    // ✅ MODIFICAR: No establecer local por defecto
+    setNewStoreId(transaction.store?.id || transaction.storeId || 1);
+    setSelectedLocal(transaction.store?.id ? transaction.store.id.toString() :
+      (transaction.storeId ? transaction.storeId.toString() : ''));
+
     setEditModalVisible(true);
   };
 
+  // ✅ CAMBIO 3: Modificar handleSaveEdit para validar selección de local
   const handleSaveEdit = async () => {
     if (!editingTransaction) return;
+
     const parsedAmount = parseFloat(newAmount.replace(/,/g, ''));
     if (isNaN(parsedAmount)) {
       Alert.alert('Error', 'Por favor ingrese un monto válido.');
+      return;
+    }
+
+    // ✅ AGREGAR: Validación de local seleccionado
+    if (!selectedLocal) {
+      Alert.alert('Error', 'Por favor seleccione un local.');
       return;
     }
 
@@ -721,6 +737,7 @@ const AdminScreen = () => {
         setSnackbarVisible(true);
         setEditModalVisible(false);
         setEditingTransaction(null);
+        setSelectedLocal(''); // ✅ LIMPIAR: Resetear selección de local
         if (showAdminExpenses) {
           fetchAdminExpenses(startDate, endDate, selectedStore);
         } else {
@@ -743,23 +760,25 @@ const AdminScreen = () => {
     }
   };
 
+  // ✅ CAMBIO 4: Modificar handleCancelEdit para limpiar selección
   const handleCancelEdit = () => {
     setEditModalVisible(false);
     setEditingTransaction(null);
+    setSelectedLocal(''); // ✅ LIMPIAR: Resetear selección de local
   };
 
-  // Render del modal de edición para cada tipo
-  // Render del modal de edición para cada tipo
-const renderEditFields = () => {
-  if (!editingTransaction) return null;
-
-  const storeSelector = (
+  // ✅ CAMBIO 5: Agregar función renderLocalSelector
+  const renderLocalSelector = () => (
     <View style={styles.modalInputContainer}>
       <Text style={styles.modalInputLabel}>Local:</Text>
       <SegmentedButtons
-        value={newStoreId.toString()}
-        onValueChange={(value) => setNewStoreId(Number(value))}
+        value={selectedLocal || newStoreId.toString()}
+        onValueChange={(value) => {
+          setSelectedLocal(value);
+          setNewStoreId(Number(value));
+        }}
         buttons={[
+          ...(selectedLocal === '' ? [{ value: '', label: 'Seleccionar...', disabled: true }] : []),
           { value: '1', label: 'Danli' },
           { value: '2', label: 'El Paraiso' },
         ]}
@@ -768,481 +787,506 @@ const renderEditFields = () => {
     </View>
   );
 
-  switch (editingTransaction.type) {
-    case 'CLOSING':
-      return (
-        <>
-          {storeSelector}
-          <TextInput
-            label="Monto"
-            value={newAmount}
-            onChangeText={(value) => {
-              const formattedValue = formatAmountInput(value);
-              setNewAmount(formattedValue);
-            }}
-            keyboardType="numeric"
-            style={styles.modalInput}
-          />
-          <TextInput
-            label="Fecha de Depósito"
-            value={newDate}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-          <TextInput
-            label="Periodo Desde"
-            value={newPeriodStart}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('periodStart');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('periodStart');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-          <TextInput
-            label="Periodo Hasta"
-            value={newPeriodEnd}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('periodEnd');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('periodEnd');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-        </>
-      );
-    case 'SUPPLIER':
-      return (
-        <>
-          {storeSelector}
-          <TextInput
-            label="Monto"
-            value={newAmount}
-            onChangeText={(value) => {
-              const formattedValue = formatAmountInput(value);
-              setNewAmount(formattedValue);
-            }}
-            keyboardType="numeric"
-            style={styles.modalInput}
-          />
-          <TextInput
-            label="Fecha de Pago"
-            value={newDate}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-          <TextInput
-            label="Proveedor"
-            value={newSupplier}
-            onChangeText={setNewSupplier}
-            style={styles.modalInput}
-          />
-          <TextInput
-            label="Descripción"
-            value={newDescription}
-            onChangeText={setNewDescription}
-            style={styles.modalInput}
-          />
-        </>
-      );
-    case 'SALARY':
-      return (
-        <>
-          {storeSelector}
-          <TextInput
-            label="Monto"
-            value={newAmount}
-            onChangeText={(value) => {
-              const formattedValue = formatAmountInput(value);
-              setNewAmount(formattedValue);
-            }}
-            keyboardType="numeric"
-            style={styles.modalInput}
-          />
-          <TextInput
-            label="Fecha de Salario"
-            value={newDate}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-          <TextInput
-            label="Descripción"
-            value={newDescription}
-            onChangeText={setNewDescription}
-            style={styles.modalInput}
-          />
-        </>
-      );
-    case 'GASTO_ADMIN':
-      return (
-        <>
-          <TextInput
-            label="Monto"
-            value={newAmount}
-            onChangeText={(value) => {
-              const formattedValue = formatAmountInput(value);
-              setNewAmount(formattedValue);
-            }}
-            keyboardType="numeric"
-            style={styles.modalInput}
-          />
-          <TextInput
-            label="Fecha"
-            value={newDate}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-          <TextInput
-            label="Descripción"
-            value={newDescription}
-            onChangeText={setNewDescription}
-            style={styles.modalInput}
-          />
-        </>
-      );
-    case 'gasto_admin':
-      return (
-        <>
-          {storeSelector}
-          <TextInput
-            label="Monto"
-            value={newAmount}
-            onChangeText={(value) => {
-              const formattedValue = formatAmountInput(value);
-              setNewAmount(formattedValue);
-            }}
-            keyboardType="numeric"
-            style={styles.modalInput}
-          />
-          <TextInput
-            label="Fecha"
-            value={newDate}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-          <TextInput
-            label="Descripción"
-            value={newDescription}
-            onChangeText={setNewDescription}
-            style={styles.modalInput}
-          />
-        </>
-      );
-    case 'income':
-    case 'expense':
-      return (
-        <>
-          {storeSelector}
-          
-          {/* Selector de tipo específico para ingresos/egresos */}
-          <View style={styles.modalInputContainer}>
-            <Text style={styles.modalInputLabel}>Tipo de transacción:</Text>
-            <SegmentedButtons
-              value={editingTransaction.type}
-              onValueChange={(value: string) => {
-                // Solo permitimos 'income' o 'expense'
-                if (value === 'income' || value === 'expense') {
-                  setEditingTransaction({
-                    ...editingTransaction,
-                    type: value as 'income' | 'expense'
-                  });
-                }
-              }}
-              buttons={[
-                { value: 'income', label: 'Ingreso' },
-                { value: 'expense', label: 'Egreso' },
-              ]}
-              style={styles.storeSelector}
-            />
-          </View>
-          
-          <TextInput
-            label="Monto"
-            value={newAmount}
-            onChangeText={(value) => {
-              const formattedValue = formatAmountInput(value);
-              setNewAmount(formattedValue);
-            }}
-            keyboardType="numeric"
-            style={styles.modalInput}
-          />
-          <TextInput
-            label="Fecha"
-            value={newDate}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-          <TextInput
-            label="Descripción"
-            value={newDescription}
-            onChangeText={setNewDescription}
-            style={styles.modalInput}
-          />
-        </>
-      );
-    default:
-      return (
-        <>
-          {storeSelector}
-          <TextInput
-            label="Monto"
-            value={newAmount}
-            onChangeText={(value) => {
-              const formattedValue = formatAmountInput(value);
-              setNewAmount(formattedValue);
-            }}
-            keyboardType="numeric"
-            style={styles.modalInput}
-          />
-          <TextInput
-            label="Fecha"
-            value={newDate}
-            style={styles.modalInput}
-            showSoftInputOnFocus={false}
-            onFocus={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }}
-            right={<TextInput.Icon icon="calendar" onPress={() => {
-              setDateEditField('date');
-              setDatePickerEditVisible(true);
-            }} />}
-          />
-          <TextInput
-            label="Descripción"
-            value={newDescription}
-            onChangeText={setNewDescription}
-            style={styles.modalInput}
-          />
-        </>
-      );
-  }
-}
+  // Render del modal de edición para cada tipo
+  // ✅ CAMBIO 6: Modificar renderEditFields para usar el nuevo selector
+  const renderEditFields = () => {
+    if (!editingTransaction) return null;
 
-// Esta función puede ir en tu archivo de utils o en el mismo componente
-const buildImageUrl = (imagePath: string | undefined): string | null => {
-  if (!imagePath) return null;
-  
-  // Si ya es una URL completa (http o https)
-  if (/^https?:\/\//i.test(imagePath)) {
-    return imagePath;
+    const storeSelector = (
+      <View style={styles.modalInputContainer}>
+        <Text style={styles.modalInputLabel}>Local:</Text>
+        <SegmentedButtons
+          value={selectedLocal || newStoreId.toString()}
+          onValueChange={(value) => {
+            setSelectedLocal(value);
+            setNewStoreId(Number(value));
+          }}
+          buttons={[
+            ...(selectedLocal === '' ? [{ value: '', label: 'Seleccionar...', disabled: true }] : []),
+            { value: '1', label: 'Danli' },
+            { value: '2', label: 'El Paraiso' },
+          ]}
+          style={styles.storeSelector}
+        />
+      </View>
+    );
+
+    switch (editingTransaction.type) {
+      case 'CLOSING':
+        return (
+          <>
+            {storeSelector}
+            <TextInput
+              label="Monto"
+              value={newAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Fecha de Depósito"
+              value={newDate}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+            <TextInput
+              label="Periodo Desde"
+              value={newPeriodStart}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('periodStart');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('periodStart');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+            <TextInput
+              label="Periodo Hasta"
+              value={newPeriodEnd}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('periodEnd');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('periodEnd');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+          </>
+        );
+      case 'SUPPLIER':
+        return (
+          <>
+            {storeSelector}
+            <TextInput
+              label="Monto"
+              value={newAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Fecha de Pago"
+              value={newDate}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+            <TextInput
+              label="Proveedor"
+              value={newSupplier}
+              onChangeText={setNewSupplier}
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Descripción"
+              value={newDescription}
+              onChangeText={setNewDescription}
+              style={styles.modalInput}
+            />
+          </>
+        );
+      case 'SALARY':
+        return (
+          <>
+            {storeSelector}
+            <TextInput
+              label="Monto"
+              value={newAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Fecha de Salario"
+              value={newDate}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+            <TextInput
+              label="Descripción"
+              value={newDescription}
+              onChangeText={setNewDescription}
+              style={styles.modalInput}
+            />
+          </>
+        );
+      case 'GASTO_ADMIN':
+        return (
+          <>
+            {storeSelector} {/* ✅ CAMBIO 7: Agregar selector para GASTO_ADMIN */}
+            <TextInput
+              label="Monto"
+              value={newAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Fecha"
+              value={newDate}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+            <TextInput
+              label="Descripción"
+              value={newDescription}
+              onChangeText={setNewDescription}
+              style={styles.modalInput}
+            />
+          </>
+        );
+      case 'gasto_admin':
+        return (
+          <>
+            {storeSelector}
+            <TextInput
+              label="Monto"
+              value={newAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Fecha"
+              value={newDate}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+            <TextInput
+              label="Descripción"
+              value={newDescription}
+              onChangeText={setNewDescription}
+              style={styles.modalInput}
+            />
+          </>
+        );
+      case 'income':
+      case 'expense':
+        return (
+          <>
+            {storeSelector}
+
+            {/* Selector de tipo específico para ingresos/egresos */}
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.modalInputLabel}>Tipo de transacción:</Text>
+              <SegmentedButtons
+                value={editingTransaction.type}
+                onValueChange={(value: string) => {
+                  // Solo permitimos 'income' o 'expense'
+                  if (value === 'income' || value === 'expense') {
+                    setEditingTransaction({
+                      ...editingTransaction,
+                      type: value as 'income' | 'expense'
+                    });
+                  }
+                }}
+                buttons={[
+                  { value: 'income', label: 'Ingreso' },
+                  { value: 'expense', label: 'Egreso' },
+                ]}
+                style={styles.storeSelector}
+              />
+            </View>
+
+            <TextInput
+              label="Monto"
+              value={newAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Fecha"
+              value={newDate}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+            <TextInput
+              label="Descripción"
+              value={newDescription}
+              onChangeText={setNewDescription}
+              style={styles.modalInput}
+            />
+          </>
+        );
+      default:
+        return (
+          <>
+            {storeSelector}
+            <TextInput
+              label="Monto"
+              value={newAmount}
+              onChangeText={(value) => {
+                const formattedValue = formatAmountInput(value);
+                setNewAmount(formattedValue);
+              }}
+              keyboardType="numeric"
+              style={styles.modalInput}
+            />
+            <TextInput
+              label="Fecha"
+              value={newDate}
+              style={styles.modalInput}
+              showSoftInputOnFocus={false}
+              onFocus={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }}
+              right={<TextInput.Icon icon="calendar" onPress={() => {
+                setDateEditField('date');
+                setDatePickerEditVisible(true);
+              }} />}
+            />
+            <TextInput
+              label="Descripción"
+              value={newDescription}
+              onChangeText={setNewDescription}
+              style={styles.modalInput}
+            />
+          </>
+        );
+    }
   }
-  
-  // Si es una ruta relativa (comienza con /)
-  if (imagePath.startsWith('/')) {
-    return `${REACT_APP_API_URL}${imagePath}`;
-  }
-  
-  // Para rutas relativas sin /
-  return `${REACT_APP_API_URL}/${imagePath}`;
-};
+
+  // Esta función puede ir en tu archivo de utils o en el mismo componente
+  const buildImageUrl = (imagePath: string | undefined): string | null => {
+    if (!imagePath) return null;
+
+    // Si ya es una URL completa (http o https)
+    if (/^https?:\/\//i.test(imagePath)) {
+      return imagePath;
+    }
+
+    // Si es una ruta relativa (comienza con /)
+    if (imagePath.startsWith('/')) {
+      return `${REACT_APP_API_URL}${imagePath}`;
+    }
+
+    // Para rutas relativas sin /
+    return `${REACT_APP_API_URL}/${imagePath}`;
+  };
 
   // Render de cada tarjeta de operación (se omite el ID)
   const renderTransaction = (item: Transaction, index: number) => {
-  let dateToShow = item.date;
+    let dateToShow = item.date;
 
-  if (item.type === 'CLOSING' && item.depositDate) {
-    dateToShow = item.depositDate;
-  } else if (item.type === 'SUPPLIER' && item.paymentDate) {
-    dateToShow = item.paymentDate;
-  } else if (item.type === 'SALARY' && item.depositDate) {
-    dateToShow = item.depositDate;
-  }
+    if (item.type === 'CLOSING' && item.depositDate) {
+      dateToShow = item.depositDate;
+    } else if (item.type === 'SUPPLIER' && item.paymentDate) {
+      dateToShow = item.paymentDate;
+    } else if (item.type === 'SALARY' && item.depositDate) {
+      dateToShow = item.depositDate;
+    }
 
-  let typeIcon, typeColor;
+    let typeIcon, typeColor;
 
-  switch (item.type) {
-    case 'CLOSING':
-    case 'income':
-      typeIcon = 'arrow-down-bold-circle-outline';
-      typeColor = '#4CAF50';
-      break;
-    case 'SUPPLIER':
-    case 'SALARY':
-    case 'GASTO_ADMIN':
-    case 'expense':
-    case 'gasto_admin':
-      typeIcon = 'arrow-up-bold-circle-outline';
-      typeColor = '#F44336';
-      break;
-    default:
-      typeIcon = 'help-circle-outline';
-      typeColor = '#9E9E9E';
-  }
+    switch (item.type) {
+      case 'CLOSING':
+      case 'income':
+        typeIcon = 'arrow-down-bold-circle-outline';
+        typeColor = '#4CAF50';
+        break;
+      case 'SUPPLIER':
+      case 'SALARY':
+      case 'GASTO_ADMIN':
+      case 'expense':
+      case 'gasto_admin':
+        typeIcon = 'arrow-up-bold-circle-outline';
+        typeColor = '#F44336';
+        break;
+      default:
+        typeIcon = 'help-circle-outline';
+        typeColor = '#9E9E9E';
+    }
 
-  const imageUri = item.imageUri || (item as any).image_uri;
+    const imageUri = item.imageUri || (item as any).image_uri;
 
-  return (
-    <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
-      <Card.Content>
-        <View style={styles.transactionHeader}>
-          <View style={styles.transactionTypeContainer}>
-            <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
-            <Text style={[styles.transactionType, { color: typeColor }]}>
-              {TRANSACTION_LABELS[item.type]}
+    return (
+      <Card key={`transaction-${item.id}-${index}`} style={styles.transactionCard}>
+        <Card.Content>
+          <View style={styles.transactionHeader}>
+            <View style={styles.transactionTypeContainer}>
+              <MaterialCommunityIcons name={typeIcon} size={24} color={typeColor} />
+              <Text style={[styles.transactionType, { color: typeColor }]}>
+                {TRANSACTION_LABELS[item.type]}
+              </Text>
+            </View>
+            <Text style={styles.transactionAmount}>
+              {formatCurrency(item.amount)}
             </Text>
           </View>
-          <Text style={styles.transactionAmount}>
-            {formatCurrency(item.amount)}
-          </Text>
-        </View>
 
-        <View style={styles.transactionDetails}>
-          {dateToShow && (
+          <View style={styles.transactionDetails}>
+            {dateToShow && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="calendar" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
+              </View>
+            )}
+
+            {item.description && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
+              </View>
+            )}
+
+            {/* Mostrar local */}
             <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Fecha: ' + formatDate(dateToShow)}</Text>
-            </View>
-          )}
-
-          {item.description && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="text" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Descripción: ' + item.description}</Text>
-            </View>
-          )}
-
-          {/* Mostrar local */}
-          <View style={styles.detailRow}>
-            <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
-            <Text style={styles.detailText}>
-              {'Local: ' + (
-                item.store?.name ||
-                item.storeName ||
-                (item.store?.id ?
-                  (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
-                  (item.storeId ?
-                    (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
-                    'No asignado'
+              <MaterialCommunityIcons name="store" size={16} color="#8B7214" />
+              <Text style={styles.detailText}>
+                {'Local: ' + (
+                  item.store?.name ||
+                  item.storeName ||
+                  (item.store?.id ?
+                    (item.store.id === 1 ? 'Danli' : 'El Paraiso') :
+                    (item.storeId ?
+                      (item.storeId === 1 ? 'Danli' : 'El Paraiso') :
+                      'No asignado'
+                    )
                   )
-                )
-              )}
-            </Text>
+                )}
+              </Text>
+            </View>
+            {/* Mostrar período para CLOSING */}
+            {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>
+                  {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
+                </Text>
+              </View>
+            )}
+            {/* Comprobante */}
+            {imageUri && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="image" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>Comprobante:</Text>
+                <ImageViewer imageUri={imageUri} size="small" />
+              </View>
+            )}
+
+            {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
+              </View>
+            )}
+
+            {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>
+                  {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
+                </Text>
+              </View>
+            )}
+
+            {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
+              <View style={styles.detailRow}>
+                <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
+                <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
+              </View>
+            )}
+
+
           </View>
-          {/* Mostrar período para CLOSING */}
-          {item.type === 'CLOSING' && item.periodStart && item.periodEnd && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>
-                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-              </Text>
-            </View>
-          )}
-          {/* Comprobante */}
-          {imageUri && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="image" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>Comprobante:</Text>
-              <ImageViewer imageUri={imageUri} size="small" />
-            </View>
-          )}
 
-          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.closingsCount && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="counter" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Cantidad de cierres: ' + item.closingsCount}</Text>
-            </View>
-          )}
-
-          {TRANSACTION_LABELS[item.type] === 'CLOSING' && item.periodStart && item.periodEnd && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="calendar-range" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>
-                {'Período: ' + formatDate(item.periodStart) + ' al ' + formatDate(item.periodEnd)}
-              </Text>
-            </View>
-          )}
-
-          {TRANSACTION_LABELS[item.type] === 'SUPPLIER' && item.supplier && (
-            <View style={styles.detailRow}>
-              <MaterialCommunityIcons name="truck-delivery" size={16} color="#8B7214" />
-              <Text style={styles.detailText}>{'Proveedor: ' + item.supplier}</Text>
-            </View>
-          )}
-          
-          
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            onPress={() => handleEdit(item)}
-            style={styles.editButton}
-            buttonColor="#2196F3"
-            icon="pencil"
-          >
-            Editar
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => handleDelete(item)}
-            style={styles.deleteButton}
-            buttonColor="#F44336"
-            icon="delete"
-          >
-            Eliminar
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
-};
+          <View style={styles.buttonContainer}>
+            <Button
+              mode="contained"
+              onPress={() => handleEdit(item)}
+              style={styles.editButton}
+              buttonColor="#2196F3"
+              icon="pencil"
+            >
+              Editar
+            </Button>
+            <Button
+              mode="contained"
+              onPress={() => handleDelete(item)}
+              style={styles.deleteButton}
+              buttonColor="#F44336"
+              icon="delete"
+            >
+              Eliminar
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
 
   const renderPagination = () => (
     <View style={styles.paginationContainer}>
@@ -1479,6 +1523,10 @@ const buildImageUrl = (imagePath: string | undefined): string | null => {
     </ThemedView>
   );
 };
+
+export default AdminScreen;
+
+
 
 const styles = StyleSheet.create({
   container: {
@@ -1902,5 +1950,3 @@ const styles = StyleSheet.create({
     borderColor: '#EEEEEE',
   },
 });
-
-export default AdminScreen;
