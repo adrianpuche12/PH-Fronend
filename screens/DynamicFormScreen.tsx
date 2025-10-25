@@ -94,6 +94,7 @@ const DynamicFormScreen = () => {
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   const slideAnim = useState(new Animated.Value(-100))[0];
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const today = new Date();
@@ -243,6 +244,10 @@ const DynamicFormScreen = () => {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     if (!formType) {
       showMessage('error', 'Por favor, seleccione un tipo de operación.');
       return;
@@ -253,6 +258,8 @@ const DynamicFormScreen = () => {
       showMessage('error', 'Por favor complete todos los campos requeridos');
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       let imageUri = null;
@@ -330,6 +337,8 @@ const DynamicFormScreen = () => {
       }
     } catch (error) {
       showMessage('error', 'No se pudo conectar con el servidor');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -927,12 +936,14 @@ const DynamicFormScreen = () => {
               <Button
                 mode="contained"
                 onPress={handleSubmit}
+                disabled={isSubmitting}
+                loading={isSubmitting}
                 style={styles.submitButton}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonText}
                 buttonColor="#2196F3"
               >
-                ENVIAR
+                {isSubmitting ? 'ENVIANDO...' : 'ENVIAR'}
               </Button>
 
               <Button
