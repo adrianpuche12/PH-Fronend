@@ -20,10 +20,10 @@ if (currentHost === '178.18.253.253') {
         apiUrl = 'http://178.18.253.253:8099';              // Backend prod (puerto 8099)
         imageUrl = 'http://178.18.253.253:3030';
     }
-} else if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    // DESARROLLO LOCAL (frontend en localhost)
-    keycloakAdapterUrl = 'http://178.18.253.253:8092';  // Adapter dev
-    apiUrl = 'http://178.18.253.253:8097';              // Backend dev
+} else {
+    // DESARROLLO LOCAL (frontend en localhost) y CUALQUIER OTRO HOST
+    keycloakAdapterUrl = 'http://178.18.253.253:8089';  // Nginx proxy (CORREGIDO)
+    apiUrl = 'http://178.18.253.253:8099';              // Backend prod
     imageUrl = 'http://178.18.253.253:3030';
 }
 
