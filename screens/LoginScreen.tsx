@@ -167,7 +167,8 @@ const LoginScreen = () => {
     setError('');
 
     try {
-      const success = await login(username, password);
+      // Trim whitespace from username and password
+      const success = await login(username.trim(), password.trim());
       if (success) {
         // Login successful
       } else {
