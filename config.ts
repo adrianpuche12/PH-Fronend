@@ -16,7 +16,7 @@ if (currentHost === '178.18.253.253') {
         imageUrl = 'http://178.18.253.253:3030';
     } else {
         // PRODUCCIÓN (frontend en puerto 8052)
-        keycloakAdapterUrl = 'http://178.18.253.253:8095';  // Adapter prod (puerto 8095)
+        keycloakAdapterUrl = 'http://178.18.253.253:8089';  // Nginx proxy (CORREGIDO)
         apiUrl = 'http://178.18.253.253:8099';              // Backend prod (puerto 8099)
         imageUrl = 'http://178.18.253.253:3030';
     }
