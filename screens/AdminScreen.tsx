@@ -28,6 +28,7 @@ import ExcelManager from '../components/ExcelManager';
 import { formatCurrency, formatNumber, formatAmountInput, parseFormattedNumber } from '../utils/numberFormat';
 import ImageViewer from '../components/ImageViewer';
 import ImageButton from '../components/ImageButton';
+import axios from 'axios';
 
 const TRANSACTION_LABELS: Record<Transaction['type'], string> = {
   income: 'Ingreso',
@@ -724,35 +725,16 @@ const AdminScreen = () => {
         url = `${REACT_APP_API_URL}/api/operations/${editingTransaction.type}/${editingTransaction.id}`;
       }
 
-      const response = await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedTransaction),
-      });
-
-      if (response.ok) {
-        setSnackbarMessage('La transacción ha sido actualizada correctamente.');
-        setSnackbarVisible(true);
-        setEditModalVisible(false);
-        setEditingTransaction(null);
-        setSelectedLocal(''); // ✅ LIMPIAR: Resetear selección de local
-        if (showAdminExpenses) {
-          fetchAdminExpenses(startDate, endDate, selectedStore);
-        } else {
-          fetchData(startDate, endDate, selectedStore);
-        }
+      await axios.put(url, updatedTransaction);
+      setSnackbarMessage('La transacción ha sido actualizada correctamente.');
+      setSnackbarVisible(true);
+      setEditModalVisible(false);
+      setEditingTransaction(null);
+      setSelectedLocal(''); // ✅ LIMPIAR: Resetear selección de local
+      if (showAdminExpenses) {
+        fetchAdminExpenses(startDate, endDate, selectedStore);
       } else {
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
-        try {
-          const errorData = JSON.parse(errorText);
-          const errorMessage = errorData.message || 'No se pudo actualizar la transacción.';
-          Alert.alert('Error', errorMessage);
-        } catch {
-          Alert.alert('Error', `Error del servidor: ${response.status}`);
-        }
+        fetchData(startDate, endDate, selectedStore);
       }
     } catch (error) {
       console.error('Error al actualizar la transacción:', error);
