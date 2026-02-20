@@ -349,7 +349,7 @@ const AdminScreen = () => {
   const [newPeriodStart, setNewPeriodStart] = useState('');
   const [newPeriodEnd, setNewPeriodEnd] = useState('');
   const [newSupplier, setNewSupplier] = useState('');
-  const [newStoreId, setNewStoreId] = useState<number>(1);
+  const [newStoreId, setNewStoreId] = useState<number | null>(null);
 
   // Snackbar
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -647,7 +647,7 @@ const AdminScreen = () => {
     setNewPeriodStart(transaction.periodStart ?? '');
     setNewPeriodEnd(transaction.periodEnd ?? '');
     setNewSupplier(transaction.supplier ?? '');
-    setNewStoreId(transaction.store?.id || 1);
+    setNewStoreId(null);
     setEditModalVisible(true);
   };
 
@@ -656,6 +656,10 @@ const AdminScreen = () => {
     const parsedAmount = parseFloat(newAmount.replace(/,/g, ''));
     if (isNaN(parsedAmount)) {
       Alert.alert('Error', 'Por favor ingrese un monto válido.');
+      return;
+    }
+    if (newStoreId === null) {
+      Alert.alert('Error', 'Por favor seleccione un local.');
       return;
     }
 
@@ -757,7 +761,7 @@ const renderEditFields = () => {
     <View style={styles.modalInputContainer}>
       <Text style={styles.modalInputLabel}>Local:</Text>
       <SegmentedButtons
-        value={newStoreId.toString()}
+        value={newStoreId?.toString() ?? ''}
         onValueChange={(value) => setNewStoreId(Number(value))}
         buttons={[
           { value: '1', label: 'Danli' },
